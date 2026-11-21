@@ -8,6 +8,8 @@ copia la sección de la versión que se publica a la release de GitHub.
 
 ## [Unreleased]
 
+## [0.1.18]
+
 ### English
 
 - Music now shows circular Windows media artwork in the island and its popup,
@@ -85,6 +87,14 @@ copia la sección de la versión que se publica a la release de GitHub.
   shell worker, and application launch, and `ShellExecuteExW` requests `SEE_MASK_FLAG_NO_UI`.
   Faulty or incompatible shell extensions no longer block or delay application opening;
   mandatory UAC elevation prompts remain visible.
+- WinGet manifests now use `/S` for both unattended modes and declare the
+  Visual C++ x64 and WebView2 runtime dependencies. This addresses first-install
+  UI and missing-runtime risks; Microsoft installation revalidation is pending.
+- Genie minimize no longer flashes the desktop for a frame or pauses before
+  flying: the stand-in is prepared in advance and placed behind the window as
+  the minimize button is pressed, and only the screen copy delays the flight.
+  Restoring from the dock no longer falls back to the Windows animation, and up
+  to eight minimized windows keep their genie snapshot.
 
 ### Español
 
@@ -159,12 +169,6 @@ copia la sección de la versión que se publica a la release de GitHub.
   auxiliar del shell y el lanzador, y `ShellExecuteExW` usa `SEE_MASK_FLAG_NO_UI`. Las
   extensiones del shell defectuosas o incompatibles ya no bloquean ni retrasan la apertura
   de aplicaciones; las solicitudes de elevación UAC se mantienen visibles.
-- WinGet manifests now use `/S` for both unattended modes and declare the
-  Visual C++ x64 and WebView2 runtime dependencies. This addresses first-install
-  UI and missing-runtime risks; Microsoft installation revalidation is pending.
-
-### Español
-
 - Corregida la detección de cuentas OpenCode Go: se lee la credencial `opencode-go`,
   se respeta `XDG_DATA_HOME` y una variable de clave vacía permite usar la sesión
   guardada. La tarjeta identifica Go e incluye un botón funcional con instrucciones
@@ -177,6 +181,11 @@ copia la sección de la versión que se publica a la release de GitHub.
 - Los manifiestos de WinGet usan `/S` en ambos modos desatendidos y declaran
   las dependencias de Visual C++ x64 y WebView2. Se corrigen riesgos de interfaz
   en la primera instalación y de runtimes ausentes; falta revalidar con Microsoft.
+- El minimizado con efecto genio ya no muestra el escritorio un instante ni se
+  detiene antes de volar: el sustituto se prepara de antemano y se coloca detrás
+  de la ventana al pulsar minimizar, y solo la copia de pantalla retrasa el vuelo.
+  Restaurar desde el dock ya no cae en la animación de Windows, y hasta ocho
+  ventanas minimizadas conservan su captura para el genio.
 
 ## [0.1.17]
 
