@@ -21,9 +21,7 @@ use windows::{
                 D3D11_USAGE_STAGING, D3D11CreateDevice, ID3D11Device, ID3D11DeviceContext,
                 ID3D11Texture2D,
             },
-            Dxgi::{
-                DXGI_OUTDUPL_FRAME_INFO, IDXGIDevice, IDXGIOutput1, IDXGIResource,
-            },
+            Dxgi::{DXGI_OUTDUPL_FRAME_INFO, IDXGIDevice, IDXGIOutput1, IDXGIResource},
         },
         UI::{
             HiDpi::{DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2, SetProcessDpiAwarenessContext},
@@ -32,8 +30,9 @@ use windows::{
                 SendInput,
             },
             WindowsAndMessaging::{
-                BringWindowToTop, EnumWindows, GetClassNameW, SetForegroundWindow, GetWindowRect, GetWindowTextW, IsIconic,
-                IsWindowVisible, PostMessageW, SC_MINIMIZE, SetCursorPos, WM_SYSCOMMAND,
+                BringWindowToTop, EnumWindows, GetClassNameW, GetWindowRect, GetWindowTextW,
+                IsIconic, IsWindowVisible, PostMessageW, SC_MINIMIZE, SetCursorPos,
+                SetForegroundWindow, WM_SYSCOMMAND,
             },
         },
     },
@@ -92,7 +91,9 @@ fn click(x: i32, y: i32) {
 }
 
 fn hit(hwnd: HWND, x: i32, y: i32) -> usize {
-    use windows::Win32::UI::WindowsAndMessaging::{SMTO_ABORTIFHUNG, SendMessageTimeoutW, WM_NCHITTEST};
+    use windows::Win32::UI::WindowsAndMessaging::{
+        SMTO_ABORTIFHUNG, SendMessageTimeoutW, WM_NCHITTEST,
+    };
     let mut result = 0usize;
     // SAFETY: 跨行程查詢，逾時就放棄。
     unsafe {
@@ -183,7 +184,9 @@ fn main() -> Result<()> {
             // 前景鎖：暫時把自己的輸入佇列接到目前前景視窗的執行緒上。
             {
                 use windows::Win32::System::Threading::{AttachThreadInput, GetCurrentThreadId};
-                use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowThreadProcessId};
+                use windows::Win32::UI::WindowsAndMessaging::{
+                    GetForegroundWindow, GetWindowThreadProcessId,
+                };
                 let front = GetForegroundWindow();
                 let theirs = GetWindowThreadProcessId(front, None);
                 let ours = GetCurrentThreadId();
@@ -227,7 +230,10 @@ fn main() -> Result<()> {
         let mut duplication = output.DuplicateOutput(&device)?;
         let mut file = File::create(out)?;
         let begin = Instant::now();
-        let q = { let t = windows::Win32::System::SystemInformation::GetSystemTimePreciseAsFileTime(); (u64::from(t.dwHighDateTime) << 32 | u64::from(t.dwLowDateTime)) / 10 };
+        let q = {
+            let t = windows::Win32::System::SystemInformation::GetSystemTimePreciseAsFileTime();
+            (u64::from(t.dwHighDateTime) << 32 | u64::from(t.dwLowDateTime)) / 10
+        };
         println!("qpc begin={q}");
         let mut staging: Option<ID3D11Texture2D> = None;
         let mut fired = false;
@@ -267,7 +273,11 @@ fn main() -> Result<()> {
             if let Err(error) = duplication.AcquireNextFrame(20, &mut info, &mut resource) {
                 // 前景切換等狀況會讓複製失效（ACCESS_LOST），重建一個。
                 if error.code() != windows::Win32::Graphics::Dxgi::DXGI_ERROR_WAIT_TIMEOUT {
-                    println!("lost {:?} at {} ms", error.code(), begin.elapsed().as_millis());
+                    println!(
+                        "lost {:?} at {} ms",
+                        error.code(),
+                        begin.elapsed().as_millis()
+                    );
                     std::thread::sleep(std::time::Duration::from_millis(2));
                     if let Ok(again) = output.DuplicateOutput(&device) {
                         duplication = again;

@@ -55,7 +55,7 @@ unsafe extern "system" fn on_event(
 ) {
     // SAFETY: 唯讀查詢；BEGIN 只在主執行緒寫一次。
     unsafe {
-        let at = (*(&raw const BEGIN)).map_or(0.0, |b| b.elapsed().as_secs_f64() * 1000.0);
+        let at = BEGIN.map_or(0.0, |b| b.elapsed().as_secs_f64() * 1000.0);
         let root = GetAncestor(hwnd, GA_ROOT);
         let mut class = [0u16; 64];
         let n = GetClassNameW(root, &mut class) as usize;
@@ -150,8 +150,16 @@ fn main() -> Result<()> {
     // SAFETY: 掛鉤在這個執行緒，訊息迴圈在 pump。
     unsafe {
         SetWinEventHook(
-            if std::env::var("ALL").is_ok() { 1 } else { EVENT_SYSTEM_CAPTURESTART },
-            if std::env::var("ALL").is_ok() { 0x7FFF_FFFF } else { EVENT_SYSTEM_MINIMIZESTART },
+            if std::env::var("ALL").is_ok() {
+                1
+            } else {
+                EVENT_SYSTEM_CAPTURESTART
+            },
+            if std::env::var("ALL").is_ok() {
+                0x7FFF_FFFF
+            } else {
+                EVENT_SYSTEM_MINIMIZESTART
+            },
             None,
             Some(on_event),
             0,

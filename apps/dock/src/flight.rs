@@ -83,10 +83,10 @@ use windows::{
         System::{LibraryLoader::GetModuleHandleW, WinRT::Composition::ICompositorDesktopInterop},
         UI::WindowsAndMessaging::{
             CreateWindowExW, DefWindowProcW, DestroyWindow, HWND_TOPMOST, RegisterClassW,
-            SW_SHOWNOACTIVATE,
-            SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_SHOWWINDOW, SetWindowPos, ShowWindow,
-            WNDCLASSW, WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_NOREDIRECTIONBITMAP,
-            WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_EX_TRANSPARENT, WS_POPUP,
+            SW_SHOWNOACTIVATE, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_SHOWWINDOW,
+            SetWindowPos, ShowWindow, WNDCLASSW, WS_EX_LAYERED, WS_EX_NOACTIVATE,
+            WS_EX_NOREDIRECTIONBITMAP, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_EX_TRANSPARENT,
+            WS_POPUP,
         },
     },
     core::{HSTRING, Interface, h, w},
@@ -343,13 +343,7 @@ struct Parts {
 impl Parts {
     /// 讓縮圖顯示 `hwnd`、擺在 `from`，`shown` 決定看不看得到。狀態沒變
     /// 就不呼叫 DWM。回傳縮圖代號與這次是否真的改了；註冊失敗回傳 `None`。
-    fn set(
-        &mut self,
-        hwnd: isize,
-        from: RECT,
-        shown: bool,
-        screen: RECT,
-    ) -> Option<(isize, bool)> {
+    fn set(&mut self, hwnd: isize, from: RECT, shown: bool, screen: RECT) -> Option<(isize, bool)> {
         if let Some(armed) = &self.armed
             && armed.hwnd == hwnd
             && armed.from == from

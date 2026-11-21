@@ -75,19 +75,18 @@ use windows::{
             WindowsAndMessaging::{
                 CreateWindowExW, DefWindowProcW, DispatchMessageW, EVENT_OBJECT_CLOAKED,
                 EVENT_OBJECT_UNCLOAKED, EVENT_SYSTEM_CAPTUREEND, EVENT_SYSTEM_CAPTURESTART,
-                EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_MINIMIZEEND,
-                EVENT_SYSTEM_MINIMIZESTART, FindWindowW, GetCursorPos, GetMessageW,
-                GetSystemMetrics, HMENU, HWND_TOPMOST, IDC_ARROW, KillTimer, LoadCursorW,
-                MA_ACTIVATE, MA_NOACTIVATE, MSG, OBJID_WINDOW, PM_REMOVE, PeekMessageW,
-                PostMessageW, PostQuitMessage, RegisterClassW, RegisterShellHookWindow,
-                RegisterWindowMessageW, SM_CXDRAG, SM_SWAPBUTTON, SWP_HIDEWINDOW, SWP_NOACTIVATE,
-                SWP_SHOWWINDOW, SetTimer, SetWindowPos, WINDOW_EX_STYLE, WINEVENT_OUTOFCONTEXT,
-                WINEVENT_SKIPOWNPROCESS, WM_APP, WM_CAPTURECHANGED, WM_CLOSE, WM_DESTROY,
-                WM_DISPLAYCHANGE, WM_DPICHANGED, WM_INITMENUPOPUP, WM_LBUTTONDOWN, WM_LBUTTONUP,
-                WM_MBUTTONDOWN, WM_MBUTTONUP, WM_MOUSEACTIVATE, WM_MOUSEMOVE, WM_QUIT,
-                WM_RBUTTONUP, WM_SETTINGCHANGE, WM_TIMER, WNDCLASSW, WS_EX_LAYERED,
-                WS_EX_NOACTIVATE, WS_EX_NOREDIRECTIONBITMAP, WS_EX_TOOLWINDOW, WS_EX_TOPMOST,
-                WS_EX_TRANSPARENT, WS_POPUP,
+                EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_MINIMIZEEND, EVENT_SYSTEM_MINIMIZESTART,
+                FindWindowW, GetCursorPos, GetMessageW, GetSystemMetrics, HMENU, HWND_TOPMOST,
+                IDC_ARROW, KillTimer, LoadCursorW, MA_ACTIVATE, MA_NOACTIVATE, MSG, OBJID_WINDOW,
+                PM_REMOVE, PeekMessageW, PostMessageW, PostQuitMessage, RegisterClassW,
+                RegisterShellHookWindow, RegisterWindowMessageW, SM_CXDRAG, SM_SWAPBUTTON,
+                SWP_HIDEWINDOW, SWP_NOACTIVATE, SWP_SHOWWINDOW, SetTimer, SetWindowPos,
+                WINDOW_EX_STYLE, WINEVENT_OUTOFCONTEXT, WINEVENT_SKIPOWNPROCESS, WM_APP,
+                WM_CAPTURECHANGED, WM_CLOSE, WM_DESTROY, WM_DISPLAYCHANGE, WM_DPICHANGED,
+                WM_INITMENUPOPUP, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MBUTTONDOWN, WM_MBUTTONUP,
+                WM_MOUSEACTIVATE, WM_MOUSEMOVE, WM_QUIT, WM_RBUTTONUP, WM_SETTINGCHANGE, WM_TIMER,
+                WNDCLASSW, WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_NOREDIRECTIONBITMAP,
+                WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_EX_TRANSPARENT, WS_POPUP,
             },
         },
     },
@@ -1991,7 +1990,11 @@ impl App {
         let Some(screen) = self.stage.as_ref().map(|stage| stage.key.screen) else {
             return;
         };
-        if self.spare.as_ref().is_none_or(|spare| !spare.covers(screen)) {
+        if self
+            .spare
+            .as_ref()
+            .is_none_or(|spare| !spare.covers(screen))
+        {
             self.spare = Spare::new(&self.gfx, screen);
         }
         if !self
@@ -2020,8 +2023,7 @@ impl App {
     /// 靠事件來時搶時間。
     fn on_capture_start(&mut self, hwnd: isize) -> Result<()> {
         use windows::Win32::UI::WindowsAndMessaging::{
-            GA_ROOT, GetAncestor, HTMINBUTTON, SMTO_ABORTIFHUNG, SendMessageTimeoutW,
-            WM_NCHITTEST,
+            GA_ROOT, GetAncestor, HTMINBUTTON, SMTO_ABORTIFHUNG, SendMessageTimeoutW, WM_NCHITTEST,
         };
         if self.fullscreen {
             return Ok(());
@@ -4792,7 +4794,9 @@ unsafe extern "system" fn on_win_event(
     if event == EVENT_SYSTEM_MINIMIZESTART {
         with_app("minimizar", |app| app.on_minimize_start(hwnd.0 as isize));
     } else if event == EVENT_SYSTEM_CAPTURESTART {
-        with_app("botón minimizar", |app| app.on_capture_start(hwnd.0 as isize));
+        with_app("botón minimizar", |app| {
+            app.on_capture_start(hwnd.0 as isize)
+        });
     } else if event == EVENT_SYSTEM_CAPTUREEND {
         with_app("botón minimizar", |app| {
             app.on_capture_end();
