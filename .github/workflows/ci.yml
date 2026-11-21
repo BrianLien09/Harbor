@@ -1,10 +1,10 @@
 name: CI
 
+# 不在每次 push／PR 自動執行；只在發布 Release 前由 release.yml 呼叫，
+# 避免把壞掉的版本發布出去。需要手動跑時可從 Actions 頁按 Run workflow。
 on:
-  push:
-    branches: [main]
-  pull_request:
   workflow_call:
+  workflow_dispatch:
 
 jobs:
   check:
