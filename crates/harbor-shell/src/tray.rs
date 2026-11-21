@@ -15,8 +15,9 @@
 //! 輸入法的中／英模式刻意不做：華碩智慧輸入法這類 TSF 輸入法用 Shift 切換時
 //! 不回報給 IMM，跨行程讀語言列也被 Windows 擋下，顯示出來只會是錯的。
 //!
-//! 成本：一條背景執行緒，每 2 秒讀一次登錄檔與行程清單；內容沒變就不通知
-//! 狀態列重繪。
+//! 成本：一條省電（EcoQoS）背景執行緒。登錄檔只在 Explorer 改了
+//! `NotifyIconSettings` 時才重讀；每 2 秒只拍一次行程快照，比對釘選 app 的
+//! 執行檔名稱，名稱相符的少數行程才開啟確認完整路徑。內容沒變就不通知狀態列重繪。
 
 use std::{
     collections::{HashMap, HashSet},
@@ -30,19 +31,24 @@ use std::{
 
 use windows::{
     Win32::{
-        Foundation::{CloseHandle, HWND, LPARAM, WPARAM},
+        Foundation::{CloseHandle, HANDLE, HWND, LPARAM, WAIT_OBJECT_0, WPARAM},
         System::{
             Com::{
                 CLSCTX_INPROC_SERVER, COINIT_MULTITHREADED, CoCreateInstance, CoInitializeEx,
                 CoTaskMemFree, CoUninitialize,
             },
-            ProcessStatus::EnumProcesses,
+            Diagnostics::ToolHelp::{
+                CreateToolhelp32Snapshot, PROCESSENTRY32W, Process32FirstW, Process32NextW,
+                TH32CS_SNAPPROCESS,
+            },
             Registry::{
-                HKEY_CURRENT_USER, RRF_RT_REG_BINARY, RRF_RT_REG_DWORD, RRF_RT_REG_SZ, RegGetValueW,
+                HKEY, HKEY_CURRENT_USER, KEY_NOTIFY, REG_NOTIFY_CHANGE_LAST_SET,
+                REG_NOTIFY_CHANGE_NAME, RRF_RT_REG_BINARY, RRF_RT_REG_DWORD, RRF_RT_REG_SZ,
+                RegCloseKey, RegGetValueW, RegNotifyChangeKeyValue, RegOpenKeyExW,
             },
             Threading::{
-                OpenProcess, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION,
-                QueryFullProcessImageNameW,
+                CreateEventW, OpenProcess, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION,
+                QueryFullProcessImageNameW, WaitForSingleObject,
             },
             Variant::VARIANT,
         },
@@ -129,12 +135,20 @@ impl Drop for Watch {
 }
 
 fn run(window: isize, message: u32, state: &Mutex<Snapshot>, stop: &AtomicBool) {
+    // 只是背景比對，慢一點沒關係；放到省電核心，不跟前景搶效能核心。
+    crate::power::set_thread_efficiency(true);
     // SAFETY: 這條執行緒自己的 COM apartment，結束前釋放。
     let initialized = unsafe { CoInitializeEx(None, COINIT_MULTITHREADED) }.is_ok();
     {
         let mut reader = TrayReader::new();
         let mut current = Snapshot::default();
+        // 監看失敗（理論上不會）就退回每輪都重讀登錄檔，也就是原本的行為。
+        let mut changes = SettingsChanges::new();
+        let mut stale = true;
         while !stop.load(Ordering::Relaxed) {
+            if stale {
+                reader.reload();
+            }
             let next = Snapshot {
                 pinned: reader.read(),
             };
@@ -149,7 +163,14 @@ fn run(window: isize, message: u32, state: &Mutex<Snapshot>, stop: &AtomicBool) 
                         PostMessageW(Some(HWND(window as *mut _)), message, WPARAM(0), LPARAM(0));
                 }
             }
-            thread::sleep(TRAY_POLL);
+            // 等待兼當睡眠：登錄檔一改就提早醒來，否則 2 秒後只重新確認行程。
+            stale = match &mut changes {
+                Some(changes) => changes.wait(),
+                None => {
+                    thread::sleep(TRAY_POLL);
+                    true
+                }
+            };
         }
         // `reader` 持有 COM 物件，必須在 CoUninitialize 之前釋放。
     }
@@ -313,38 +334,66 @@ fn invoke(buttons: &IUIAutomationElementArray, position: usize) -> windows::core
 struct TrayReader {
     /// 子機碼 → (PNG 原始位元組, 解碼後的圖示)。PNG 沒變就不重新解碼。
     icons: HashMap<u64, (Vec<u8>, Option<Arc<IconImage>>)>,
+    /// 上次讀登錄檔得到的釘選項目，照工作列順序；登錄檔沒變就沿用。
+    pinned: Vec<Pinned>,
+}
+
+/// 一個釘選項目：比對行程用的小寫路徑與檔名，以及已解碼的圖示。
+struct Pinned {
+    key: u64,
+    path: String,
+    file: String,
+    icon: Option<Arc<IconImage>>,
 }
 
 impl TrayReader {
     fn new() -> Self {
         Self {
             icons: HashMap::new(),
+            pinned: Vec::new(),
         }
     }
 
-    /// 釘選（`IsPromoted = 1`）且正在執行的 app，照 `UIOrderList` 的順序，
+    /// 重讀登錄檔：釘選（`IsPromoted = 1`）的項目，照 `UIOrderList` 的順序，
     /// 也就是工作列上由左到右的順序。
-    fn read(&mut self) -> Vec<PinnedIcon> {
-        let promoted: Vec<u64> = ordered_keys()
+    fn reload(&mut self) {
+        let entries: Vec<Entry> = ordered_keys()
             .into_iter()
             .filter(|&key| registry_dword(key, "IsPromoted") == Some(1))
-            .collect();
-        if promoted.is_empty() {
-            return Vec::new();
-        }
-        let running = running_images();
-        promoted
-            .into_iter()
             .map(Entry::read)
-            .filter(|entry| {
-                entry
-                    .path
-                    .as_ref()
-                    .is_some_and(|path| running.contains(&path.to_lowercase()))
-            })
-            .map(|entry| PinnedIcon {
+            .collect();
+        let mut pinned = Vec::with_capacity(entries.len());
+        for entry in entries {
+            let Some(path) = entry.path.map(|path| path.to_lowercase()) else {
+                continue;
+            };
+            let file = path.rsplit('\\').next().unwrap_or_default().to_owned();
+            pinned.push(Pinned {
                 key: entry.key,
                 icon: self.icon(entry.key),
+                path,
+                file,
+            });
+        }
+        // 已取消釘選的圖示不再留在記憶體裡。
+        self.icons
+            .retain(|key, _| pinned.iter().any(|item| item.key == *key));
+        self.pinned = pinned;
+    }
+
+    /// 上次讀到的釘選項目中，正在執行的那些。
+    fn read(&self) -> Vec<PinnedIcon> {
+        if self.pinned.is_empty() {
+            return Vec::new();
+        }
+        let files: HashSet<&str> = self.pinned.iter().map(|item| item.file.as_str()).collect();
+        let running = running_images(&files);
+        self.pinned
+            .iter()
+            .filter(|item| running.contains(&item.path))
+            .map(|item| PinnedIcon {
+                key: item.key,
+                icon: item.icon.clone(),
             })
             .collect()
     }
@@ -436,23 +485,123 @@ fn expand_known_folder(path: &str) -> String {
     }
 }
 
-/// 目前執行中的行程的執行檔路徑（小寫）。系統行程打不開就略過。
-fn running_images() -> HashSet<String> {
-    let mut pids = vec![0u32; 2048];
-    let mut needed = 0u32;
-    // SAFETY: `pids` 的大小如實告知；Windows 最多寫滿它。
-    let listed = unsafe {
-        EnumProcesses(
-            pids.as_mut_ptr(),
-            (pids.len() * size_of::<u32>()) as u32,
-            &mut needed,
-        )
+/// 執行檔名稱（小寫）在 `files` 裡的行程，它們的完整路徑（小寫）。
+///
+/// 行程快照本身就帶執行檔名稱，不用開啟行程；只有名稱相符的少數幾個才開啟
+/// 讀完整路徑，排除不同資料夾裡同名的執行檔。原本是每個行程（約 300 個）
+/// 都開啟一次。
+fn running_images(files: &HashSet<&str>) -> HashSet<String> {
+    let mut found = HashSet::new();
+    // SAFETY: 快照在函式結束前關閉。
+    let Ok(snapshot) = (unsafe { CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) }) else {
+        return found;
     };
-    if listed.is_err() {
-        return HashSet::new();
+    let mut entry = PROCESSENTRY32W {
+        dwSize: size_of::<PROCESSENTRY32W>() as u32,
+        ..Default::default()
+    };
+    // SAFETY: `entry` 的大小如文件要求，屬於這個快照。
+    let mut more = unsafe { Process32FirstW(snapshot, &mut entry) }.is_ok();
+    while more {
+        let len = entry
+            .szExeFile
+            .iter()
+            .position(|&unit| unit == 0)
+            .unwrap_or(entry.szExeFile.len());
+        let name = String::from_utf16_lossy(&entry.szExeFile[..len]).to_lowercase();
+        if files.contains(name.as_str())
+            && let Some(image) = process_image(entry.th32ProcessID)
+        {
+            found.insert(image);
+        }
+        // SAFETY: 同上，快照與 entry 在這一輪都有效。
+        more = unsafe { Process32NextW(snapshot, &mut entry) }.is_ok();
     }
-    pids.truncate(needed as usize / size_of::<u32>());
-    pids.into_iter().filter_map(process_image).collect()
+    // SAFETY: 上面建立的快照。
+    unsafe {
+        let _ = CloseHandle(snapshot);
+    }
+    found
+}
+
+/// 等 `NotifyIconSettings` 有變化，最多等 `TRAY_POLL`。
+///
+/// 不用 `watch::RegistryWatch`：那是把訊息送給視窗，這裡是背景執行緒自己等，
+/// 直接等事件最簡單。
+struct SettingsChanges {
+    key: HKEY,
+    event: HANDLE,
+    /// 重新登記失敗後就無法再收到通知，只能每輪重讀。
+    armed: bool,
+}
+
+impl SettingsChanges {
+    fn new() -> Option<Self> {
+        let mut key = HKEY::default();
+        // SAFETY: 只為了接收通知而開啟，`Drop` 時關閉。
+        unsafe {
+            RegOpenKeyExW(
+                HKEY_CURRENT_USER,
+                &HSTRING::from(SETTINGS_KEY),
+                None,
+                KEY_NOTIFY,
+                &mut key,
+            )
+            .ok()
+            .ok()?;
+        }
+        // SAFETY: 自動重設的事件，`Drop` 時關閉。
+        let Ok(event) = (unsafe { CreateEventW(None, false, false, None) }) else {
+            // SAFETY: 上面開啟的機碼。
+            unsafe {
+                let _ = RegCloseKey(key);
+            }
+            return None;
+        };
+        let mut changes = Self {
+            key,
+            event,
+            armed: false,
+        };
+        changes.arm();
+        changes.armed.then_some(changes)
+    }
+
+    /// 登記下一次變化；每次登記只會觸發一次。
+    fn arm(&mut self) {
+        // SAFETY: 機碼與事件都屬於這個物件，活得比登記久。
+        self.armed = unsafe {
+            RegNotifyChangeKeyValue(
+                self.key,
+                true,
+                REG_NOTIFY_CHANGE_NAME | REG_NOTIFY_CHANGE_LAST_SET,
+                Some(self.event),
+                true,
+            )
+        }
+        .is_ok();
+    }
+
+    /// 回傳 `true` 代表登錄檔改了（或已無法監看），要重讀。
+    fn wait(&mut self) -> bool {
+        // SAFETY: 事件屬於這個物件。
+        let signaled = unsafe { WaitForSingleObject(self.event, TRAY_POLL.as_millis() as u32) }
+            == WAIT_OBJECT_0;
+        if signaled {
+            self.arm();
+        }
+        signaled || !self.armed
+    }
+}
+
+impl Drop for SettingsChanges {
+    fn drop(&mut self) {
+        // SAFETY: 兩者都是這個物件建立的。
+        unsafe {
+            let _ = RegCloseKey(self.key);
+            let _ = CloseHandle(self.event);
+        }
+    }
 }
 
 /// 行程的執行檔完整路徑（小寫）；系統行程打不開時為 `None`。

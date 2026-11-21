@@ -133,6 +133,12 @@ const REGISTRY_CHANGED: u32 = WM_APP + 25;
 const SPI_SETWORKAREA: usize = 0x002F;
 /// A `TICK` is already posted.
 static TICK_PENDING: AtomicBool = AtomicBool::new(false);
+/// 網路、電源或 Windows 設定有通知進來，下一次 tick 要重讀狀態。
+/// 每分鐘的時鐘計時器不設這個旗標：網路、隱私、工作列設定各有自己的監看，
+/// 時鐘跳分鐘時重讀它們（隱私還要逐一走登錄機碼）只是白做工。
+static STATUS_STALE: AtomicBool = AtomicBool::new(false);
+/// 安全網：就算漏了通知，狀態最多這麼久也會重讀一次。
+const STATUS_REFRESH_FLOOR: Duration = Duration::from_secs(10 * 60);
 static AUDIO_TICK_PENDING: AtomicBool = AtomicBool::new(false);
 static TRIGGERS_LEFT: AtomicI32 = AtomicI32::new(0);
 static TRIGGERS_RIGHT: AtomicI32 = AtomicI32::new(0);
@@ -399,6 +405,8 @@ pub struct MenuBar {
     /// Where the full bar goes on screen.
     bounds: RECT,
     status: Status,
+    /// 上次重讀 `status` 的時間；`None` 代表還沒讀過。
+    status_read_at: Option<Instant>,
     widgets: MenuBarWidgets,
     usage: Option<UsageMonitor>,
     /// Where each provider sits in the closed island, as screen x.
@@ -525,6 +533,10 @@ unsafe extern "system" fn bar_proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM) -
                 unsafe {
                     harbor_shell::power::power_setting_changed(l);
                 }
+            }
+            // 時鐘計時器（其他計時器在上面已處理）與用量更新不影響網路等狀態。
+            if msg != WM_TIMER && msg != USAGE_CHANGED {
+                STATUS_STALE.store(true, Ordering::Relaxed);
             }
             if !TICK_PENDING.swap(true, Ordering::Relaxed) {
                 // SAFETY: Posting to our own live window.
@@ -1133,6 +1145,7 @@ impl MenuBar {
                 privacy: Privacy::default(),
                 battery_percentage: false,
             },
+            status_read_at: None,
             widgets,
             usage: usage_enabled.then(|| UsageMonitor::new(hwnd.0 as isize, USAGE_CHANGED)),
             usage_anchors: Vec::new(),
@@ -1628,11 +1641,19 @@ impl MenuBar {
         if let Some(watch) = &mut self.settings_watch {
             watch.arm();
         }
+        STATUS_STALE.store(true, Ordering::Relaxed);
         self.tick(gfx)
     }
 
     pub fn tick(&mut self, gfx: &Gfx) -> Result<()> {
-        self.update_status();
+        let stale = STATUS_STALE.swap(false, Ordering::Relaxed)
+            || self
+                .status_read_at
+                .is_none_or(|at| at.elapsed() >= STATUS_REFRESH_FLOOR);
+        if stale {
+            self.update_status();
+            self.status_read_at = Some(Instant::now());
+        }
         let audio_changed = self
             .audio
             .as_ref()
@@ -1728,7 +1749,7 @@ impl MenuBar {
                 }
                 IslandAction::Refresh => {
                     if let Some(usage) = &mut self.usage {
-                        usage.refresh(true);
+                        usage.refresh(true, usage::active_providers());
                     }
                 }
                 IslandAction::OpenCodeConnectionHelp => {
@@ -1786,7 +1807,7 @@ impl MenuBar {
             Some(Action::Search) => launcher::open_search(),
             Some(Action::TaskView) => launcher::open_task_view(),
             Some(Action::Widgets) => launcher::open_widgets(),
-            Some(Action::Bluetooth) => launcher::open_bluetooth(),
+            Some(Action::Bluetooth) => open_settings_page("ms-settings:bluetooth"),
             Some(Action::HiddenIcons) => launcher::toggle_hidden_icons(anchor),
             Some(Action::InputLanguage) => {} // Opened outside the app borrow.
             Some(Action::PinnedTray(index)) => {
@@ -1799,12 +1820,8 @@ impl MenuBar {
                 }
             }
             // Windows' own pages list which apps use each device.
-            Some(Action::Microphone) => {
-                let _ = launcher::open("ms-settings:privacy-microphone");
-            }
-            Some(Action::Camera) => {
-                let _ = launcher::open("ms-settings:privacy-webcam");
-            }
+            Some(Action::Microphone) => open_settings_page("ms-settings:privacy-microphone"),
+            Some(Action::Camera) => open_settings_page("ms-settings:privacy-webcam"),
             None => {}
         }
         Ok(())
@@ -1845,7 +1862,7 @@ impl MenuBar {
             && (!self.auto_hide || self.revealed)
             && let Some(usage) = &mut self.usage
         {
-            usage.refresh(false);
+            usage.refresh(false, active_providers);
         }
         let look = Look {
             accessories: self.accessories.as_ref().map_or([None, None], |monitor| {
@@ -2944,6 +2961,18 @@ impl IslandGeometry {
 
 fn toggle_panel(open: Option<Island>, clicked: Island) -> Option<Island> {
     (open != Some(clicked)).then_some(clicked)
+}
+
+/// 開設定頁走既有的 shell 背景工作：`ShellExecuteEx` 是同步呼叫，
+/// 設定 app 冷啟動時會卡住狀態列的 UI 執行緒好一陣子。
+/// 背景工作起不來時退回直接開，至少功能不會壞。
+fn open_settings_page(uri: &str) {
+    let queued = crate::shell_work::dispatch(crate::shell_work::Action::Open {
+        id: uri.to_owned(),
+    });
+    if queued.is_err() {
+        let _ = launcher::open(uri);
+    }
 }
 
 fn available_panel(open: Option<Island>, music: bool, usage: bool) -> Option<Island> {

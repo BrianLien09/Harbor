@@ -223,11 +223,6 @@ pub fn open_sound() {
     }
 }
 
-/// Opens the Windows Bluetooth settings page.
-pub fn open_bluetooth() {
-    let _ = open("ms-settings:bluetooth");
-}
-
 /// Shows the desktop, or brings the windows back: what the taskbar's corner
 /// button does (Win+D).
 pub fn show_desktop() {

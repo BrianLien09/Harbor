@@ -304,11 +304,12 @@ impl Monitor {
         self.last_active = ActiveProviders::default();
     }
 
-    pub fn refresh(&mut self, force: bool) {
+    /// `active` 由呼叫端傳入：狀態列每次 refresh 已經拍過一次行程快照，
+    /// 這裡再拍一次只是在 UI 執行緒上重做同樣的事。
+    pub fn refresh(&mut self, force: bool, active: ActiveProviders) {
         if self.running.swap(true, Ordering::AcqRel) {
             return;
         }
-        let active = active_providers();
         if !force
             && active == self.last_active
             && self
