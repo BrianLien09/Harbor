@@ -44,7 +44,7 @@ jobs:
           SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
         run: |
           $version = (cargo metadata --format-version 1 --no-deps | ConvertFrom-Json).packages |
-            Where-Object name -eq 'muelle' | Select-Object -ExpandProperty version
+            Where-Object name -eq 'harbor' | Select-Object -ExpandProperty version
           $lane = ./scripts/Get-ReleaseSigningMode.ps1 -EventName $env:GITHUB_EVENT_NAME `
             -Version $version -RefName $env:GITHUB_REF_NAME `
             -Organization $env:SIGNPATH_ORGANIZATION_ID -Project $env:SIGNPATH_PROJECT_SLUG `
@@ -78,8 +78,8 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force sign/binaries | Out-Null
-          Copy-Item target/release/muelle-settings.exe sign/binaries/
-          Copy-Item apps/settings/src-tauri/binaries/muelle-x86_64-pc-windows-msvc.exe sign/binaries/muelle.exe
+          Copy-Item target/release/harbor-settings.exe sign/binaries/
+          Copy-Item apps/settings/src-tauri/binaries/harbor-x86_64-pc-windows-msvc.exe sign/binaries/harbor.exe
 
       - name: Upload the programs to sign
         if: env.SIGNING_MODE != 'Unsigned'
@@ -112,7 +112,7 @@ jobs:
         run: |
           ./scripts/Assert-Authenticode.ps1 -Mode $env:SIGNING_MODE `
             -ProductionThumbprint $env:PRODUCTION_THUMBPRINT -ReportDirectory sign/verification-binaries `
-            -Path sign/binaries-signed/muelle.exe,sign/binaries-signed/muelle-settings.exe
+            -Path sign/binaries-signed/harbor.exe,sign/binaries-signed/harbor-settings.exe
 
       # Tauri marks the settings program while bundling; it is already marked
       # from the first build, so bundling again keeps the signature intact
@@ -123,8 +123,8 @@ jobs:
         env:
           PRODUCTION_THUMBPRINT: ${{ vars.SIGNPATH_PRODUCTION_CERTIFICATE_THUMBPRINT }}
         run: |
-          Copy-Item sign/binaries-signed/muelle-settings.exe target/release/ -Force
-          Copy-Item sign/binaries-signed/muelle.exe apps/settings/src-tauri/binaries/muelle-x86_64-pc-windows-msvc.exe -Force
+          Copy-Item sign/binaries-signed/harbor-settings.exe target/release/ -Force
+          Copy-Item sign/binaries-signed/harbor.exe apps/settings/src-tauri/binaries/harbor-x86_64-pc-windows-msvc.exe -Force
           '{ "bundle": { "createUpdaterArtifacts": false } }' | Set-Content -Encoding ascii no-updater.json
           Push-Location apps/settings
           pnpm tauri bundle --bundles nsis --config src-tauri/tauri.bundle.conf.json --config ../../no-updater.json
@@ -132,9 +132,9 @@ jobs:
           Pop-Location
           ./scripts/Assert-Authenticode.ps1 -Mode $env:SIGNING_MODE `
             -ProductionThumbprint $env:PRODUCTION_THUMBPRINT -ReportDirectory sign/verification-bundled `
-            -Path target/release/muelle-settings.exe,apps/settings/src-tauri/binaries/muelle-x86_64-pc-windows-msvc.exe
+            -Path target/release/harbor-settings.exe,apps/settings/src-tauri/binaries/harbor-x86_64-pc-windows-msvc.exe
           New-Item -ItemType Directory -Force sign/installer | Out-Null
-          Copy-Item "target/release/bundle/nsis/Muelle_${env:VERSION}_x64-setup.exe" sign/installer/Muelle-Setup.exe
+          Copy-Item "target/release/bundle/nsis/Harbor_${env:VERSION}_x64-setup.exe" sign/installer/Harbor-Setup.exe
 
       - name: Upload the installer to sign
         if: env.SIGNING_MODE != 'Unsigned'
@@ -164,8 +164,8 @@ jobs:
         env:
           PRODUCTION_THUMBPRINT: ${{ vars.SIGNPATH_PRODUCTION_CERTIFICATE_THUMBPRINT }}
         run: |
-          $setup = (Resolve-Path "target/release/bundle/nsis").Path + "/Muelle_${env:VERSION}_x64-setup.exe"
-          Copy-Item sign/installer-signed/Muelle-Setup.exe $setup -Force
+          $setup = (Resolve-Path "target/release/bundle/nsis").Path + "/Harbor_${env:VERSION}_x64-setup.exe"
+          Copy-Item sign/installer-signed/Harbor-Setup.exe $setup -Force
           ./scripts/Assert-Authenticode.ps1 -Mode $env:SIGNING_MODE `
             -ProductionThumbprint $env:PRODUCTION_THUMBPRINT -ReportDirectory sign/verification-installer -Path $setup
 
@@ -176,7 +176,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
-          $setup = (Resolve-Path "target/release/bundle/nsis").Path + "/Muelle_${env:VERSION}_x64-setup.exe"
+          $setup = (Resolve-Path "target/release/bundle/nsis").Path + "/Harbor_${env:VERSION}_x64-setup.exe"
           Push-Location apps/settings
           pnpm tauri signer sign --app-version $env:VERSION $setup
           if ($LASTEXITCODE) { throw 'tauri signer sign failed' }
@@ -204,14 +204,14 @@ jobs:
           If a signature remains invalid, send its status/message and the signing request IDs to SignPath support.
           '@ >> $env:GITHUB_STEP_SUMMARY
 
-      # latest.json is what the in-app updater reads; Muelle-Setup.exe is a
+      # latest.json is what the in-app updater reads; Harbor-Setup.exe is a
       # stable name for the website's "latest" download link.
       - name: Prepare release files
         if: env.SIGNING_MODE != 'Test'
         shell: pwsh
         run: |
           $nsis = 'target/release/bundle/nsis'
-          $setup = "Muelle_${env:VERSION}_x64-setup.exe"
+          $setup = "Harbor_${env:VERSION}_x64-setup.exe"
           $signature = Get-Content "$nsis/$setup.sig" -Raw
           $repo = "https://github.com/$env:GITHUB_REPOSITORY"
           $manifest = [ordered]@{
@@ -229,7 +229,7 @@ jobs:
           $manifest | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8NoBOM upload/latest.json
           Copy-Item "$nsis/$setup" upload/
           Copy-Item "$nsis/$setup.sig" upload/
-          Copy-Item "$nsis/$setup" upload/Muelle-Setup.exe
+          Copy-Item "$nsis/$setup" upload/Harbor-Setup.exe
 
           # The release text is this version's section of CHANGELOG.md (English
           # and Spanish), between its heading and the next one.
@@ -248,4 +248,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create $env:GITHUB_REF_NAME (Get-ChildItem upload).FullName `
-            --draft --notes-file notes.md --title "Muelle $env:GITHUB_REF_NAME"
+            --draft --notes-file notes.md --title "Harbor $env:GITHUB_REF_NAME"

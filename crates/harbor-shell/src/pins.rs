@@ -349,7 +349,7 @@ pub fn shortcut_id(link: &Path) -> Option<String> {
 
 /// The shortcut to open `id` with, when one carries more than the program:
 /// `wscript.exe "script.vbs"`, a browser profile, a web app. Searched among
-/// the shortcuts Muelle keeps and those pinned to the Windows taskbar, only
+/// the shortcuts Harbor keeps and those pinned to the Windows taskbar, only
 /// when the app is opened, never on the dock's thread.
 ///
 /// Requires COM to be initialized on the calling thread.
@@ -373,8 +373,8 @@ pub fn launch_target(id: &str) -> Option<String> {
         .map(|link| link.to_string_lossy().into_owned())
 }
 
-/// The shortcut Muelle keeps for the program `id` (see [`keep_shortcut`]),
-/// which gives its pin its name and icon. Only Muelle's own folder, which
+/// The shortcut Harbor keeps for the program `id` (see [`keep_shortcut`]),
+/// which gives its pin its name and icon. Only Harbor's own folder, which
 /// is usually empty: cheap enough for every icon lookup.
 ///
 /// Requires COM to be initialized on the calling thread.
@@ -394,11 +394,11 @@ pub fn kept_shortcut_for(id: &str) -> Option<String> {
         .map(|link| link.to_string_lossy().into_owned())
 }
 
-/// The folder where Muelle keeps its own copy of shortcuts pinned from
+/// The folder where Harbor keeps its own copy of shortcuts pinned from
 /// elsewhere (the desktop, Downloads), as the taskbar keeps `User Pinned`:
 /// the pin keeps working if the original is moved or deleted.
 fn kept_folder() -> Option<PathBuf> {
-    Some(PathBuf::from(env::var_os("APPDATA")?).join("Muelle\\Pins"))
+    Some(PathBuf::from(env::var_os("APPDATA")?).join("Harbor\\Pins"))
 }
 
 fn taskbar_folder() -> Option<PathBuf> {
@@ -410,7 +410,7 @@ fn taskbar_folder() -> Option<PathBuf> {
 
 /// Pins the shortcut `link`, dropped on the dock, and returns the pin id
 /// ([`shortcut_id`]). When the shortcut is needed to open it (it is the pin
-/// itself, or it carries arguments), Muelle keeps a copy: the pin keeps
+/// itself, or it carries arguments), Harbor keeps a copy: the pin keeps
 /// working if the original is moved or deleted. One kept shortcut per
 /// program, as on the taskbar: the newest replaces the older one.
 #[must_use]
@@ -457,7 +457,7 @@ pub fn keep_shortcut(link: &Path) -> Option<String> {
     None
 }
 
-/// Deletes what Muelle kept to open `id` once it is no longer pinned: the
+/// Deletes what Harbor kept to open `id` once it is no longer pinned: the
 /// kept shortcut itself, or the kept shortcuts that open that program. The
 /// taskbar's and the user's own shortcuts are never touched.
 ///

@@ -1,4 +1,4 @@
-# Builds the one-step installer: Muelle_<version>_x64-setup.exe.
+# Builds the one-step installer: Harbor_<version>_x64-setup.exe.
 # Usage: scripts/build-installer.ps1   (from any folder)
 #
 # With TAURI_SIGNING_PRIVATE_KEY (and TAURI_SIGNING_PRIVATE_KEY_PASSWORD) set,
@@ -14,18 +14,18 @@ try {
     $target = (cargo metadata --format-version 1 --no-deps | ConvertFrom-Json).target_directory
     $triple = 'x86_64-pc-windows-msvc'
 
-    cargo build --release -p muelle
-    if ($LASTEXITCODE) { throw 'cargo build muelle failed' }
+    cargo build --release -p harbor
+    if ($LASTEXITCODE) { throw 'cargo build harbor failed' }
 
     # Tauri bundles sidecars from src-tauri/binaries/<name>-<target triple>.exe.
     $binaries = Join-Path $root 'apps/settings/src-tauri/binaries'
     New-Item -ItemType Directory -Force $binaries -ErrorAction Stop | Out-Null
-    Copy-Item (Join-Path $target 'release/muelle.exe') (Join-Path $binaries "muelle-$triple.exe") -Force -ErrorAction Stop
+    Copy-Item (Join-Path $target 'release/harbor.exe') (Join-Path $binaries "harbor-$triple.exe") -Force -ErrorAction Stop
 
     $configs = @('--config', 'src-tauri/tauri.bundle.conf.json')
     if (-not $env:TAURI_SIGNING_PRIVATE_KEY) {
         Write-Warning 'TAURI_SIGNING_PRIVATE_KEY is not set: building without the updater signature.'
-        $unsigned = Join-Path $env:TEMP 'muelle-unsigned.conf.json'
+        $unsigned = Join-Path $env:TEMP 'harbor-unsigned.conf.json'
         '{ "bundle": { "createUpdaterArtifacts": false } }' | Set-Content -Encoding ascii $unsigned
         $configs += @('--config', $unsigned)
     }

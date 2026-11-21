@@ -4,8 +4,8 @@
 use std::time::{Duration, Instant};
 
 use anyhow::Result;
-use muelle_core::frame::DockEdge;
-use muelle_shell::{system::animations_enabled, tracker};
+use harbor_core::frame::DockEdge;
+use harbor_shell::{system::animations_enabled, tracker};
 use windows::{
     UI::{
         Color,
@@ -200,7 +200,7 @@ impl MultiWindowView {
         // `view` owns the HWND even if subsequent graphics setup fails.
         let hwnd = unsafe {
             let instance = GetModuleHandleW(None)?;
-            let class = w!("MuelleMultiWindowView");
+            let class = w!("HarborMultiWindowView");
             RegisterClassW(&WNDCLASSW {
                 lpfnWndProc: Some(multi_window_view_proc),
                 hInstance: instance.into(),
@@ -211,7 +211,7 @@ impl MultiWindowView {
             CreateWindowExW(
                 WS_EX_NOREDIRECTIONBITMAP | WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
                 class,
-                w!("Muelle window previews"),
+                w!("Harbor window previews"),
                 WS_POPUP,
                 0,
                 0,
@@ -618,7 +618,7 @@ mod tests {
                 CreateWindowExW(
                     WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
                     w!("STATIC"),
-                    w!("Muelle preview test"),
+                    w!("Harbor preview test"),
                     WS_OVERLAPPEDWINDOW,
                     10,
                     10,

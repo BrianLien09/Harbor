@@ -2,8 +2,8 @@
 //! icons and masks to be drawn on compositor surfaces.
 
 use anyhow::{Context, Result};
-use muelle_core::frame::DockEdge;
-use muelle_shell::icons::IconImage;
+use harbor_core::frame::DockEdge;
+use harbor_shell::icons::IconImage;
 use windows::{
     Foundation::Size,
     Graphics::DirectX::{DirectXAlphaMode, DirectXPixelFormat},
@@ -1314,7 +1314,7 @@ fn draw_image_in(
 /// The interface font: Segoe UI Variable on Windows 11, Segoe UI on
 /// Windows 10, which does not have it.
 fn text_font() -> windows::core::PCWSTR {
-    if muelle_shell::system::is_windows_11() {
+    if harbor_shell::system::is_windows_11() {
         w!("Segoe UI Variable Text")
     } else {
         w!("Segoe UI")
@@ -1324,7 +1324,7 @@ fn text_font() -> windows::core::PCWSTR {
 /// The system icon font. Windows 10 has Segoe MDL2 Assets instead of Segoe
 /// Fluent Icons; the symbols the menu bar uses share the same code points.
 fn icon_font() -> windows::core::PCWSTR {
-    if muelle_shell::system::is_windows_11() {
+    if harbor_shell::system::is_windows_11() {
         w!("Segoe Fluent Icons")
     } else {
         w!("Segoe MDL2 Assets")

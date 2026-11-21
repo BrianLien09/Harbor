@@ -1,15 +1,15 @@
 <div align="center">
 
-<img width="50%" alt="Muelle" src="https://github.com/user-attachments/assets/8c715a53-a0df-4780-9dd4-09ce3ccd9043" />
+<img width="50%" alt="Harbor" src="https://github.com/user-attachments/assets/8c715a53-a0df-4780-9dd4-09ce3ccd9043" />
 
   **為 Windows 10 與 11 打造的輕量級 macOS 風格 Dock。**
 
-  Muelle 以可自訂的 Dock 取代 Windows 工作列，並提供選用的 macOS 風格選單列。
+  Harbor 以可自訂的 Dock 取代 Windows 工作列，並提供選用的 macOS 風格選單列。
 
   [English](README.md) · [Español](README.es.md) · [Français](README.fr.md) · **繁體中文**
 </div>
 
-<img width="1500" height="436" alt="Muelle 的 Dock 與選單列" src="https://github.com/user-attachments/assets/3c91b488-214d-453d-a8c2-a9e0dc7f245e" />
+<img width="1500" height="436" alt="Harbor 的 Dock 與選單列" src="https://github.com/user-attachments/assets/3c91b488-214d-453d-a8c2-a9e0dc7f245e" />
 
 <img width="1000" height="259" alt="Dock 圖示放大效果" src="https://github.com/user-attachments/assets/e5b2ce63-cec1-4d1d-8ef1-a4fa1c668c40" />
 
@@ -45,21 +45,21 @@
   並可設定神燈最小化動畫的行為。
 - 若 Dock 意外結束，守護程式會自動還原 Windows 工作列。
 
-神燈效果**預設為開啟**，可在「設定 → 視窗」中關閉。啟用期間，Muelle 會暫時停用被追蹤視窗的
-Windows 視窗轉場動畫，好讓自己的最小化動畫能夠播放；Muelle 結束時，這些轉場動畫會自動還原。
+神燈效果**預設為開啟**，可在「設定 → 視窗」中關閉。啟用期間，Harbor 會暫時停用被追蹤視窗的
+Windows 視窗轉場動畫，好讓自己的最小化動畫能夠播放；Harbor 結束時，這些轉場動畫會自動還原。
 
 ## 安裝
 
-**[下載 Muelle-Setup.exe](https://github.com/crafter-station/Muelle/releases/latest/download/Muelle-Setup.exe)**
+**[下載 Harbor-Setup.exe](https://github.com/BrianLien09/Harbor/releases/latest/download/Harbor-Setup.exe)**
 （Windows 10 1903 版或更新版本，或 Windows 11；64 位元），也可以從
-[Releases](https://github.com/crafter-station/Muelle/releases) 選擇其他版本。
+[Releases](https://github.com/BrianLien09/Harbor/releases) 選擇其他版本。
 
-1. 執行 `Muelle-Setup.exe`。它只為目前的使用者安裝：不需要系統管理員權限、沒有安裝精靈，
+1. 執行 `Harbor-Setup.exe`。它只為目前的使用者安裝：不需要系統管理員權限、沒有安裝精靈，
    大約兩秒就完成。
-2. Muelle 還很新，Windows SmartScreen 可能尚未認得它，並顯示已保護你的電腦。
+2. Harbor 還很新，Windows SmartScreen 可能尚未認得它，並顯示已保護你的電腦。
    請選擇 **其他資訊 → 仍要執行**。詳見
-   [程式碼簽署政策](https://muelle.crafter.run/code-signing-policy)。
-3. 從開始功能表開啟 **Muelle**，再選擇 **Dock** 來自訂 Dock 與頂端選單列。
+   [程式碼簽署政策](https://brianlien09.github.io/Harbor/code-signing-policy)。
+3. 從開始功能表開啟 **Harbor**，再選擇 **Dock** 來自訂 Dock 與頂端選單列。
 
 ## 在 Windows 上試用
 
@@ -75,14 +75,14 @@ Windows 視窗轉場動畫，好讓自己的最小化動畫能夠播放；Muelle
 在儲存庫根目錄執行：
 
 ```powershell
-cargo run -p muelle
+cargo run -p harbor
 ```
 
-Dock 執行期間會隱藏工作列。在終端機按 **Ctrl+C** 即可結束；Muelle 應該會自動還原工作列。
+Dock 執行期間會隱藏工作列。在終端機按 **Ctrl+C** 即可結束；Harbor 應該會自動還原工作列。
 若需要手動還原：
 
 ```powershell
-cargo run -p muelle -- --restore
+cargo run -p harbor -- --restore
 ```
 
 ### 執行設定應用程式
@@ -120,23 +120,23 @@ pnpm build
 |---|---|
 | `apps/dock` | 原生 Windows Dock |
 | `apps/settings` | Tauri 桌面設定應用程式 |
-| `crates/muelle-core` | 與平台無關的版面配置與動畫邏輯 |
-| `crates/muelle-shell` | Windows Shell 整合 |
-| `crates/muelle-config` | 共用設定與持久化 |
-| `muelle` | Astro 網站 |
+| `crates/harbor-core` | 與平台無關的版面配置與動畫邏輯 |
+| `crates/harbor-shell` | Windows Shell 整合 |
+| `crates/harbor-config` | 共用設定與持久化 |
+| `harbor` | Astro 網站 |
 
 ## 隱私權
 
-Muelle 不收集任何資料、沒有遙測，也絕不會把任何內容傳送給專案團隊。它會發出兩種網路請求，
+Harbor 不收集任何資料、沒有遙測，也絕不會把任何內容傳送給專案團隊。它會發出兩種網路請求，
 兩者皆為選用：
 
 - **更新：** 設定應用程式開啟時，會向 GitHub Releases 詢問是否有較新的版本；此外每天一次，
-  在開機後幾分鐘，Muelle 會在背景做同樣的檢查，並安裝找到的更新（Dock 本身從不使用網路）。
+  在開機後幾分鐘，Harbor 會在背景做同樣的檢查，並安裝找到的更新（Dock 本身從不使用網路）。
   可在「設定 → 系統 → *自動安裝更新*」關閉安裝，或用 *自動檢查更新* 關閉全部。
-- **AI 供應商用量：** 當支援的用戶端正在執行時，Muelle 會讀取其現有的本機登入狀態，
+- **AI 供應商用量：** 當支援的用戶端正在執行時，Harbor 會讀取其現有的本機登入狀態，
   並在顯示期間每五分鐘、或按下重新整理時，向該供應商查詢可用的方案上限。
   對於 Gemini CLI 與 Antigravity，Gemini Pro 與 Flash 的額度在可取得時會分開顯示；
-  Antigravity 是透過其本機服務查詢。認證資訊只保留在記憶體中，Muelle 不會儲存。
+  Antigravity 是透過其本機服務查詢。認證資訊只保留在記憶體中，Harbor 不會儲存。
   可在「設定 → 選單列 → *顯示 AI 供應商用量*」關閉。
 
-詳細說明：[muelle.crafter.run/privacy](https://muelle.crafter.run/privacy)。
+詳細說明：[brianlien09.github.io/Harbor/privacy](https://brianlien09.github.io/Harbor/privacy)。

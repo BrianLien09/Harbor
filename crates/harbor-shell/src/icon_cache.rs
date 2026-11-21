@@ -42,7 +42,7 @@ impl Default for IconCache {
     fn default() -> Self {
         Self::new(
             PathBuf::from(env::var_os("LOCALAPPDATA").unwrap_or_default())
-                .join("Muelle")
+                .join("Harbor")
                 .join("icons"),
         )
     }
@@ -65,7 +65,7 @@ impl IconCache {
     /// Like [`get`](Self::get), but stores each `variant` separately for items
     /// whose icon depends on their state, such as an empty or full recycle bin.
     pub fn get_variant(&self, id: &str, variant: &str, size: u32) -> Result<AppVisual, IconError> {
-        // A program pinned from a shortcut Muelle keeps shows that shortcut's
+        // A program pinned from a shortcut Harbor keeps shows that shortcut's
         // name and icon ("Launch Hidden", not "Windows Based Script Host"),
         // as the taskbar does. Part of the key, so replacing or removing the
         // shortcut never shows a stale label.
@@ -218,7 +218,7 @@ mod tests {
 
     #[test]
     fn stamp_of_should_follow_file_modification_time() {
-        let file = env::temp_dir().join(format!("muelle-stamp-{}", std::process::id()));
+        let file = env::temp_dir().join(format!("harbor-stamp-{}", std::process::id()));
         let _ = fs::write(&file, b"x");
         let expected = fs::metadata(&file)
             .and_then(|meta| meta.modified())

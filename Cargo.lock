@@ -1526,6 +1526,67 @@ dependencies = [
 ]
 
 [[package]]
+name = "harbor"
+version = "0.1.17"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "harbor-config",
+ "harbor-core",
+ "harbor-shell",
+ "png",
+ "reqwest",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "windows",
+ "windows-collections",
+ "windows-core",
+ "windows-future",
+ "windows-numerics",
+ "winresource",
+]
+
+[[package]]
+name = "harbor-config"
+version = "0.1.17"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "harbor-core"
+version = "0.1.17"
+
+[[package]]
+name = "harbor-settings"
+version = "0.1.17"
+dependencies = [
+ "base64 0.23.1",
+ "harbor-config",
+ "harbor-shell",
+ "png",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-single-instance",
+ "tauri-plugin-updater",
+]
+
+[[package]]
+name = "harbor-shell"
+version = "0.1.17"
+dependencies = [
+ "serde",
+ "thiserror 2.0.21",
+ "windows",
+ "windows-core",
+]
+
+[[package]]
 name = "hashbrown"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2272,67 +2333,6 @@ dependencies = [
  "serde",
  "thiserror 2.0.21",
  "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "muelle"
-version = "0.1.17"
-dependencies = [
- "anyhow",
- "chrono",
- "muelle-config",
- "muelle-core",
- "muelle-shell",
- "png",
- "reqwest",
- "rusqlite",
- "serde",
- "serde_json",
- "windows",
- "windows-collections",
- "windows-core",
- "windows-future",
- "windows-numerics",
- "winresource",
-]
-
-[[package]]
-name = "muelle-config"
-version = "0.1.17"
-dependencies = [
- "serde",
- "serde_json",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "muelle-core"
-version = "0.1.17"
-
-[[package]]
-name = "muelle-settings"
-version = "0.1.17"
-dependencies = [
- "base64 0.23.1",
- "muelle-config",
- "muelle-shell",
- "png",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-single-instance",
- "tauri-plugin-updater",
-]
-
-[[package]]
-name = "muelle-shell"
-version = "0.1.17"
-dependencies = [
- "serde",
- "thiserror 2.0.21",
- "windows",
- "windows-core",
 ]
 
 [[package]]
@@ -3805,8 +3805,8 @@ name = "spikes"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "muelle-core",
- "muelle-shell",
+ "harbor-core",
+ "harbor-shell",
  "serde",
  "serde_json",
  "windows",

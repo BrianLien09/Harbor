@@ -6,10 +6,10 @@
 -->
 <artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
   <zip-file>
-    <pe-file path="muelle.exe" product-name="Muelle">
+    <pe-file path="harbor.exe" product-name="Harbor">
       <authenticode-sign />
     </pe-file>
-    <pe-file path="muelle-settings.exe" product-name="Muelle">
+    <pe-file path="harbor-settings.exe" product-name="Harbor">
       <authenticode-sign />
     </pe-file>
   </zip-file>

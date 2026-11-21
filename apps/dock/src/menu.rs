@@ -164,7 +164,7 @@ fn show_at(
     match Popup::open(gfx, owner, items, anchor, dark, placement) {
         Ok(popup) => popup.run(),
         Err(error) => {
-            eprintln!("muelle: menú: {error:#}");
+            eprintln!("harbor: menú: {error:#}");
             show_native(owner, items, anchor, dark, placement)
         }
     }
@@ -291,7 +291,7 @@ impl Popup {
             });
         }
 
-        let glass = muelle_shell::system::transparency_enabled();
+        let glass = harbor_shell::system::transparency_enabled();
         let root = c.CreateContainerVisual()?;
         root.SetSize(Vector2::new(width, height))?;
         let layers = root.Children()?;
@@ -688,7 +688,7 @@ fn create_window(dark: bool) -> Result<HWND> {
     // the whole process; the window is configured before it is shown.
     unsafe {
         let instance = GetModuleHandleW(None)?;
-        let class = w!("MuelleMenu");
+        let class = w!("HarborMenu");
         CLASS.get_or_init(|| {
             RegisterClassW(&WNDCLASSW {
                 // The system shadow under the menu, as native menus have.
@@ -703,7 +703,7 @@ fn create_window(dark: bool) -> Result<HWND> {
         let hwnd = CreateWindowExW(
             WS_EX_NOREDIRECTIONBITMAP | WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
             class,
-            w!("Muelle"),
+            w!("Harbor"),
             WS_POPUP,
             0,
             0,
@@ -839,7 +839,7 @@ fn strip_mnemonic(label: &str) -> (String, Option<char>) {
 
 /// The user's accent color, as macOS highlights menus with its own.
 fn accent() -> Color {
-    muelle_shell::system::accent_color()
+    harbor_shell::system::accent_color()
         .map_or(rgba(10, 132, 255, 255), |[r, g, b]| rgba(r, g, b, 255))
 }
 
@@ -991,7 +991,7 @@ mod tests {
             CreateWindowExW(
                 Default::default(),
                 w!("STATIC"),
-                w!("Muelle menu test"),
+                w!("Harbor menu test"),
                 WS_POPUP,
                 0,
                 0,

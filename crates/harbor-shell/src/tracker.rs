@@ -616,7 +616,7 @@ mod tests {
             let window = Fixture(CreateWindowExW(
                 ex,
                 w!("STATIC"),
-                w!("Muelle browser ordering test"),
+                w!("Harbor browser ordering test"),
                 WS_POPUP,
                 x,
                 100,

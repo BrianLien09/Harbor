@@ -1,9 +1,9 @@
-"""Draws the Muelle icon: a glass lotus on a purple-to-orange squircle.
+"""Draws the Harbor icon: a glass lotus on a purple-to-orange squircle.
 
 Everything is vector-defined, edges get analytic anti-aliasing, and the
 result is rendered at 2x and downsampled, so edges are crisp and the area outside the squircle is fully transparent (no halo).
 
-Writes assets/brand/muelle-1024.png and assets/brand/muelle.ico, and copies the
+Writes assets/brand/harbor-1024.png and assets/brand/harbor.ico, and copies the
 .ico to the Settings app. Run scripts/icon_preview.py afterwards.
 
 Usage: python scripts/make_icon.py
@@ -160,16 +160,16 @@ def main() -> None:
     medium = draw(stroke=13 / 1024, petal_boost=0.07)
     bold = draw(stroke=22 / 1024, petal_boost=0.14)
 
-    shrink(fine, 1024).save(BRAND / "muelle-1024.png", optimize=True)
+    shrink(fine, 1024).save(BRAND / "harbor-1024.png", optimize=True)
     frames = [shrink(variant(size, fine, medium, bold), size) for size in ICO_SIZES]
     frames[-1].save(
-        BRAND / "muelle.ico",
+        BRAND / "harbor.ico",
         sizes=[(s, s) for s in ICO_SIZES],
         append_images=frames[:-1],
         bitmap_format="png",
     )
-    shutil.copyfile(BRAND / "muelle.ico", SETTINGS_ICON)
-    print("wrote muelle-1024.png, muelle.ico and the Settings icon")
+    shutil.copyfile(BRAND / "harbor.ico", SETTINGS_ICON)
+    print("wrote harbor-1024.png, harbor.ico and the Settings icon")
 
 
 if __name__ == "__main__":

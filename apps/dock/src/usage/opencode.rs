@@ -248,7 +248,7 @@ mod tests {
     #[test]
     fn wal_reads_do_not_modify_the_database_or_block_its_writer() -> Result<()> {
         let root = std::env::temp_dir().join(format!(
-            "muelle-zen-{}-{}",
+            "harbor-zen-{}-{}",
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)?

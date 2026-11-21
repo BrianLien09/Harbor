@@ -76,7 +76,7 @@ fn main() {
             verbs(&path)
         );
     }
-    for id in muelle_shell::pins::taskbar_pins()
+    for id in harbor_shell::pins::taskbar_pins()
         .iter()
         .filter(|id| id.starts_with("shell:"))
     {

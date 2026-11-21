@@ -60,7 +60,7 @@ pub struct Layout {
 }
 
 /// ```
-/// use muelle_core::layout::{ItemKind, Metrics, layout};
+/// use harbor_core::layout::{ItemKind, Metrics, layout};
 /// let result = layout(&[ItemKind::Icon, ItemKind::Icon], &Metrics::DEFAULT);
 /// assert_eq!(result.width, 9.0 + 48.0 + 12.0 + 48.0 + 9.0);
 /// ```

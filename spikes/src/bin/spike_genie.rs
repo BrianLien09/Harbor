@@ -7,7 +7,7 @@
 
 use std::{thread::sleep, time::Duration};
 
-use muelle_shell::screen;
+use harbor_shell::screen;
 use windows::{
     Win32::{
         Foundation::{COLORREF, HWND, LPARAM, LRESULT, RECT, WPARAM},
@@ -70,7 +70,7 @@ fn churn(first: HWND, cycles: u32) {
             };
             let Ok(extra) = CreateWindowExW(
                 Default::default(),
-                w!("MuelleSpikeGenie"),
+                w!("HarborSpikeGenie"),
                 w!("Genie spike churn"),
                 WS_OVERLAPPEDWINDOW,
                 400,
@@ -117,7 +117,7 @@ fn main() {
         let Ok(instance) = GetModuleHandleW(None) else {
             return;
         };
-        let class = w!("MuelleSpikeGenie");
+        let class = w!("HarborSpikeGenie");
         RegisterClassW(&WNDCLASSW {
             lpfnWndProc: Some(proc),
             hInstance: instance.into(),

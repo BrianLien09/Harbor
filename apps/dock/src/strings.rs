@@ -4,8 +4,8 @@
 
 use std::sync::atomic::{AtomicU8, Ordering};
 
-use muelle_config::Language;
-use muelle_shell::system::{UiLanguage, ui_language};
+use harbor_config::Language;
+use harbor_shell::system::{UiLanguage, ui_language};
 
 pub struct Strings {
     pub open: &'static str,
@@ -70,12 +70,12 @@ const ES: Strings = Strings {
     empty_bin: "&Vaciar papelera",
     turn_hiding_on: "Activar &ocultación automática",
     turn_hiding_off: "Desactivar &ocultación automática",
-    quit_dock: "Salir de &Muelle",
+    quit_dock: "Salir de &Harbor",
     start: "Inicio",
     remove: "Quitar",
     close_window: "&Cerrar",
     ungroup: "&Desagrupar",
-    settings: "&Ajustes de Muelle…",
+    settings: "&Ajustes de Harbor…",
     run_as_admin: "Ejecutar como a&dministrador",
     show_desktop: "Mostrar &escritorio",
     task_manager: "Administrador de &tareas",
@@ -119,12 +119,12 @@ const EN: Strings = Strings {
     empty_bin: "&Empty Recycle Bin",
     turn_hiding_on: "Turn Hiding &On",
     turn_hiding_off: "Turn Hiding &Off",
-    quit_dock: "Quit &Muelle",
+    quit_dock: "Quit &Harbor",
     start: "Start",
     remove: "Remove",
     close_window: "&Close",
     ungroup: "&Ungroup",
-    settings: "Muelle &Settings…",
+    settings: "Harbor &Settings…",
     run_as_admin: "Run as a&dministrator",
     show_desktop: "Show &Desktop",
     task_manager: "Task &Manager",
@@ -168,12 +168,12 @@ const FR: Strings = Strings {
     empty_bin: "&Vider la Corbeille",
     turn_hiding_on: "Activer le &masquage automatique",
     turn_hiding_off: "Désactiver le &masquage automatique",
-    quit_dock: "&Quitter Muelle",
+    quit_dock: "&Quitter Harbor",
     start: "Démarrer",
     remove: "Retirer",
     close_window: "&Fermer",
     ungroup: "&Dégrouper",
-    settings: "&Réglages de Muelle…",
+    settings: "&Réglages de Harbor…",
     run_as_admin: "Exécuter en tant qu'&administrateur",
     show_desktop: "Afficher le &Bureau",
     task_manager: "&Gestionnaire des tâches",
@@ -217,12 +217,12 @@ const ZH_TW: Strings = Strings {
     empty_bin: "清空資源回收筒(&E)",
     turn_hiding_on: "開啟自動隱藏(&O)",
     turn_hiding_off: "關閉自動隱藏(&O)",
-    quit_dock: "結束 Muelle(&M)",
+    quit_dock: "結束 Harbor(&M)",
     start: "開始",
     remove: "移除",
     close_window: "關閉(&C)",
     ungroup: "取消群組(&U)",
-    settings: "Muelle 設定(&S)…",
+    settings: "Harbor 設定(&S)…",
     run_as_admin: "以系統管理員身分執行(&D)",
     show_desktop: "顯示桌面(&D)",
     task_manager: "工作管理員(&M)",

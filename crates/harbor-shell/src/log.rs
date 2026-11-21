@@ -18,7 +18,7 @@ use std::{
 
 use windows::Win32::{Foundation::SYSTEMTIME, System::SystemInformation::GetLocalTime};
 
-/// Past this size the log becomes `muelle.old.log` and starts again, so
+/// Past this size the log becomes `harbor.old.log` and starts again, so
 /// it never holds more than twice this.
 const LIMIT: u64 = 256 * 1024;
 const LINE_LIMIT: usize = 4096;
@@ -34,14 +34,14 @@ pub fn line(text: &str) {
     let writer = WRITER.get_or_init(|| {
         let (sender, receiver) = mpsc::sync_channel(64);
         thread::Builder::new()
-            .name("muelle-log".into())
+            .name("harbor-log".into())
             .spawn(move || {
                 let path = env::var_os("LOCALAPPDATA")
-                    .map(|folder| Path::new(&folder).join("Muelle").join("muelle.log"));
+                    .map(|folder| Path::new(&folder).join("Harbor").join("harbor.log"));
                 for message in receiver {
                     match message {
                         Message::Line(now, text) => {
-                            eprintln!("muelle: {text}");
+                            eprintln!("harbor: {text}");
                             if let Some(path) = &path {
                                 let _ = write_record(path, now, &text);
                             }
@@ -99,8 +99,8 @@ mod tests {
 
     #[test]
     fn rotation_replaces_the_previous_backup_and_bounds_both_files() -> std::io::Result<()> {
-        let folder = env::temp_dir().join(format!("muelle-log-test-{}", std::process::id()));
-        let path = folder.join("muelle.log");
+        let folder = env::temp_dir().join(format!("harbor-log-test-{}", std::process::id()));
+        let path = folder.join("harbor.log");
         let message = "a".repeat(LINE_LIMIT);
         for _ in 0..200 {
             write_record(&path, SYSTEMTIME::default(), &message)?;

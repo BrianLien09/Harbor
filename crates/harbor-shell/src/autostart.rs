@@ -1,10 +1,10 @@
-//! Starting Muelle when the user signs in, with a logon scheduled task.
+//! Starting Harbor when the user signs in, with a logon scheduled task.
 //!
 //! Windows can defer Run entries and makes no guarantee about their order
 //! or delay. The task uses the interactive user's logon trigger. Registration
 //! uses the Task Scheduler COM API with a Run entry as fallback.
 //!
-//! Whether autostart is on is also written to `HKCU\Software\Muelle`,
+//! Whether autostart is on is also written to `HKCU\Software\Harbor`,
 //! because task registrations cannot be read quickly and the watchdog has
 //! to know it instantly while Windows shuts down.
 
@@ -44,9 +44,9 @@ use windows::{
     core::{BSTR, HSTRING, Interface, Owned, PCWSTR, PWSTR, w},
 };
 
-const RUN_VALUE: PCWSTR = w!("Muelle");
+const RUN_VALUE: PCWSTR = w!("Harbor");
 const RUN_KEY: PCWSTR = w!(r"Software\Microsoft\Windows\CurrentVersion\Run");
-const MUELLE_KEY: PCWSTR = w!(r"Software\Muelle");
+const HARBOR_KEY: PCWSTR = w!(r"Software\Harbor");
 const MARKER_VALUE: PCWSTR = w!("Autostart");
 
 /// Starts `exe` at every sign-in, or stops doing so (`None`).
@@ -88,7 +88,7 @@ fn set_locked(exe: Option<&str>, sid: &str) -> windows::core::Result<()> {
     Ok(())
 }
 
-/// `true` if Muelle is set to start when the user signs in. Reads only the
+/// `true` if Harbor is set to start when the user signs in. Reads only the
 /// registry, so it is instant and works while Windows shuts down.
 #[must_use]
 pub fn is_enabled() -> bool {
@@ -306,7 +306,7 @@ struct ConfigurationLock(Owned<HANDLE>);
 
 impl ConfigurationLock {
     fn acquire(sid: &str) -> windows::core::Result<Self> {
-        let name = HSTRING::from(format!("Global\\Muelle.Autostart.{sid}"));
+        let name = HSTRING::from(format!("Global\\Harbor.Autostart.{sid}"));
         // SAFETY: The handle is owned here. Only the successful wait gives
         // ownership of the mutex, which Drop releases on this same thread.
         unsafe {
@@ -357,12 +357,12 @@ fn run_approved() -> bool {
 }
 
 fn task_name(sid: &str) -> BSTR {
-    BSTR::from(format!("Muelle ({sid})"))
+    BSTR::from(format!("Harbor ({sid})"))
 }
 
 fn legacy_task_name() -> BSTR {
     BSTR::from(format!(
-        "Muelle ({})",
+        "Harbor ({})",
         env::var("USERNAME").unwrap_or_default()
     ))
 }
@@ -459,8 +459,8 @@ fn task_xml(user: &str, exe: &str) -> String {
         r#"<?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <RegistrationInfo>
-    <Author>Muelle</Author>
-    <Description>Starts the Muelle dock when you sign in. Turn it off in Muelle Settings.</Description>
+    <Author>Harbor</Author>
+    <Description>Starts the Harbor dock when you sign in. Turn it off in Harbor Settings.</Description>
   </RegistrationInfo>
   <Triggers>
     <LogonTrigger>
@@ -510,7 +510,7 @@ fn marker() -> bool {
     let status = unsafe {
         RegGetValueW(
             HKEY_CURRENT_USER,
-            MUELLE_KEY,
+            HARBOR_KEY,
             MARKER_VALUE,
             RRF_RT_REG_DWORD,
             None,
@@ -528,7 +528,7 @@ fn set_marker(on: bool) -> windows::core::Result<()> {
     unsafe {
         RegCreateKeyExW(
             HKEY_CURRENT_USER,
-            MUELLE_KEY,
+            HARBOR_KEY,
             None,
             None,
             REG_OPTION_NON_VOLATILE,
@@ -544,7 +544,7 @@ fn set_marker(on: bool) -> windows::core::Result<()> {
     }
 }
 
-/// The command under `Run`, if Muelle has one there.
+/// The command under `Run`, if Harbor has one there.
 fn run_value() -> Option<String> {
     let mut buffer = [0u16; 1024];
     let mut size = size_of_val(&buffer) as u32;
@@ -614,8 +614,8 @@ mod tests {
 
     #[test]
     fn task_xml_should_escape_the_path_and_keep_normal_priority() {
-        let xml = task_xml(r"PC\Ana", r"C:\Apps & Tools\muelle.exe");
-        assert!(xml.contains(r"<Command>C:\Apps &amp; Tools\muelle.exe</Command>"));
+        let xml = task_xml(r"PC\Ana", r"C:\Apps & Tools\harbor.exe");
+        assert!(xml.contains(r"<Command>C:\Apps &amp; Tools\harbor.exe</Command>"));
         assert!(xml.contains(r"<UserId>PC\Ana</UserId>"));
         assert!(xml.contains("<Priority>4</Priority>"));
         assert!(xml.contains("<LogonTrigger>"));
@@ -661,7 +661,7 @@ mod tests {
         let sid = user_sid()?;
         let exe = env::current_exe()?.to_string_lossy().into_owned();
         let name = BSTR::from(format!(
-            "Muelle autostart test {} {}",
+            "Harbor autostart test {} {}",
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -740,7 +740,7 @@ mod tests {
                 unsafe {
                     task.SetEnabled(true.into())?;
                 }
-                upgrade_task(folder, &name, r"C:\Other\muelle.exe", &sid)?;
+                upgrade_task(folder, &name, r"C:\Other\harbor.exe", &sid)?;
                 assert_eq!(
                     restart_count()?,
                     0,

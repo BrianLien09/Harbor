@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Muelle",
-  "identifier": "app.muelle.settings",
+  "productName": "Harbor",
+  "identifier": "app.brianlien09.harbor.settings",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",
@@ -13,7 +13,7 @@
       {
         "label": "main",
         "create": false,
-        "title": "Muelle",
+        "title": "Harbor",
         "width": 780,
         "height": 560,
         "minWidth": 680,
@@ -43,9 +43,9 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDIzNEYxOUVEODA3QTI1RDkKUldUWkpYcUE3UmxQSTdLMCtDWW5oT2o2NWVtL0cwUnorMWdsOStGMGlwMmNsNEczS1Nldlo1L0UK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEM0NUQ2QzMzMjAwMURFNUUKUldSZTNnRWdNMnhkeEUvYTdzQmREejU0eDlUNENOOFdYUi9hVXZlUkNPblArM0krcmlRTSt6OXAK",
       "endpoints": [
-        "https://github.com/crafter-station/Muelle/releases/latest/download/latest.json"
+        "https://github.com/BrianLien09/Harbor/releases/latest/download/latest.json"
       ],
       "windows": {
         "installMode": "passive"

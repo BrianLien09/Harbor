@@ -134,7 +134,7 @@ export function App() {
         if (!alive) return;
         setConfig(loaded);
         setAutostartState(starts);
-        // The only network access in Muelle, and the user can turn it off.
+        // The only network access in Harbor, and the user can turn it off.
         if (!loaded.checkUpdates) {
           setUpdateState({ kind: "off" });
           return;
@@ -290,7 +290,7 @@ export function App() {
             <SettingIcon name="external" size={12} />
           </button>
           {projectError ? <p className="project-error" role="alert">{t.githubError}</p> : null}
-          <div className="sidebar-version"><span>Muelle</span><span>{version ? `v${version}` : ""}</span></div>
+          <div className="sidebar-version"><span>Harbor</span><span>{version ? `v${version}` : ""}</span></div>
         </footer>
       </aside>
 

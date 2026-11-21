@@ -248,7 +248,7 @@ const OVERFLOW_CLASSES: [PCWSTR; 2] = [
 
 /// The notification area's hidden icons, the taskbar's "^" button: Win+B
 /// moves the focus to that button and Enter opens it. The taskbar itself
-/// stays invisible while Muelle runs; only its flyout shows. Windows offers
+/// stays invisible while Harbor runs; only its flyout shows. Windows offers
 /// no other way: the button is not exposed while the taskbar is hidden.
 ///
 /// Windows opens the flyout at the bottom of the screen, above where the
@@ -507,7 +507,7 @@ mod tests {
                     CreateWindowExW(
                         WS_EX_TOOLWINDOW,
                         w!("STATIC"),
-                        &HSTRING::from(format!("Muelle stacking test {index}")),
+                        &HSTRING::from(format!("Harbor stacking test {index}")),
                         WS_OVERLAPPEDWINDOW,
                         x,
                         40,

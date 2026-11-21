@@ -29,7 +29,7 @@ impl Controller {
     pub fn new(visible: bool) -> Result<Self> {
         static NEXT: AtomicU64 = AtomicU64::new(0);
         let name = format!(
-            "Local\\Muelle.Accessories.{}.{}",
+            "Local\\Harbor.Accessories.{}.{}",
             std::process::id(),
             NEXT.fetch_add(1, Ordering::Relaxed)
         );
@@ -91,10 +91,10 @@ pub struct Watch {
 impl Watch {
     pub fn new(name: &str, tx: SyncSender<Event>, full: Arc<AtomicBool>) -> Result<Self> {
         ensure!(
-            name.starts_with("Local\\Muelle.Accessories.")
+            name.starts_with("Local\\Harbor.Accessories.")
                 && name.len() <= 96
                 && name
-                    .trim_start_matches("Local\\Muelle.Accessories.")
+                    .trim_start_matches("Local\\Harbor.Accessories.")
                     .chars()
                     .all(|c| c.is_ascii_digit() || c == '.'),
             "invalid visibility channel"

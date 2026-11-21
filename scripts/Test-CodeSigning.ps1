@@ -2,7 +2,7 @@
 $ErrorActionPreference = 'Stop'
 $modeScript = Join-Path $PSScriptRoot 'Get-ReleaseSigningMode.ps1'
 $verifyScript = Join-Path $PSScriptRoot 'Assert-Authenticode.ps1'
-$root = Join-Path ([IO.Path]::GetTempPath()) "muelle-signing-test-$([guid]::NewGuid())"
+$root = Join-Path ([IO.Path]::GetTempPath()) "harbor-signing-test-$([guid]::NewGuid())"
 $testPin = '3A93532146A10D3B1FA8DEAF4192AD4A232FFCAC'
 $prodPin = '1111111111111111111111111111111111111111'
 $savedActions = $env:GITHUB_ACTIONS
@@ -38,7 +38,7 @@ try {
         $null = [Management.Automation.Language.Parser]::ParseFile($script, [ref]$tokens, [ref]$errors)
         if ($errors) { throw ($errors | Out-String) }
     }
-    $common = @{ Version = '0.1.17'; RefName = 'v0.1.17'; Organization = 'configured'; Project = 'Muelle'; TokenPresent = $true }
+    $common = @{ Version = '0.1.17'; RefName = 'v0.1.17'; Organization = 'configured'; Project = 'Harbor'; TokenPresent = $true }
     $lane = & $modeScript -EventName workflow_dispatch @common -Policy release-signing
     if ($lane.Mode -ne 'Test' -or $lane.Policy -ne 'test-signing') { throw 'Manual runs must always be tests.' }
     Write-Host 'PASS: manual run uses only test-signing, even with production configured'

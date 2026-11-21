@@ -6,7 +6,7 @@
 pub const MAX_RECENT: usize = 3;
 
 /// Ids of groups start with this, so they never collide with an app's.
-pub const GROUP_PREFIX: &str = "muelle:group:";
+pub const GROUP_PREFIX: &str = "harbor:group:";
 
 #[must_use]
 pub fn is_group_id(id: &str) -> bool {
@@ -745,40 +745,40 @@ mod tests {
     fn with_groups_should_mend_what_a_hand_edited_file_breaks() {
         let pinned = vec![
             "a".to_owned(),
-            "muelle:group:1".to_owned(),
-            "muelle:group:9".to_owned(),
-            "muelle:group:2".to_owned(),
+            "harbor:group:1".to_owned(),
+            "harbor:group:9".to_owned(),
+            "harbor:group:2".to_owned(),
         ];
         let roster = Roster::new(pinned, vec!["x".into()]).with_groups(vec![
             // `a` is pinned already; `x` was recent.
             Group {
-                id: "muelle:group:1".into(),
+                id: "harbor:group:1".into(),
                 apps: vec!["a".into(), "x".into(), "y".into(), "y".into()],
             },
             // Not in the pinned list: its app comes back to the dock.
             Group {
-                id: "muelle:group:5".into(),
+                id: "harbor:group:5".into(),
                 apps: vec!["z".into()],
             },
             // One app only: the app takes its place.
             Group {
-                id: "muelle:group:2".into(),
+                id: "harbor:group:2".into(),
                 apps: vec!["w".into()],
             },
         ]);
-        assert_eq!(roster.pinned(), ["a", "muelle:group:1", "w", "z"]);
-        assert_eq!(members(&roster, "muelle:group:1"), ["x", "y"]);
+        assert_eq!(roster.pinned(), ["a", "harbor:group:1", "w", "z"]);
+        assert_eq!(members(&roster, "harbor:group:1"), ["x", "y"]);
         assert!(roster.recent().is_empty());
     }
 
     #[test]
     fn loading_a_collapsed_group_must_not_also_show_its_app_in_recent() {
         let roster = Roster::new(
-            vec!["muelle:group:1".into()],
+            vec!["harbor:group:1".into()],
             vec!["a".into(), "other".into()],
         )
         .with_groups(vec![Group {
-            id: "muelle:group:1".into(),
+            id: "harbor:group:1".into(),
             apps: vec!["a".into()],
         }]);
         assert_eq!(roster.pinned(), ["a"]);
@@ -789,7 +789,7 @@ mod tests {
     fn recovering_an_orphaned_group_must_not_duplicate_its_apps_in_recent() {
         let roster =
             Roster::new(Vec::new(), vec!["a".into(), "b".into()]).with_groups(vec![Group {
-                id: "muelle:group:1".into(),
+                id: "harbor:group:1".into(),
                 apps: vec!["a".into(), "b".into()],
             }]);
         assert_eq!(roster.pinned(), ["a", "b"]);

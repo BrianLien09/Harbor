@@ -18,7 +18,7 @@
     </symbol>
   </defs>
   <rect width="1280" height="650" fill="#edf0f4"/>
-  <text x="80" y="51" fill="#282d38" font-family="Segoe UI Variable,Segoe UI,sans-serif" font-size="28" font-weight="650">Muelle · Uso de IA</text>
+  <text x="80" y="51" fill="#282d38" font-family="Segoe UI Variable,Segoe UI,sans-serif" font-size="28" font-weight="650">Harbor · Uso de IA</text>
   <text x="80" y="78" fill="#707887" font-family="Segoe UI Variable,Segoe UI,sans-serif" font-size="16">Vista de diseño · valores de ejemplo</text>
 
   <rect x="80" y="105" width="1120" height="168" rx="23" fill="url(#sky)"/>

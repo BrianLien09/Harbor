@@ -1,5 +1,5 @@
 //! Installed keyboard layouts and a nonblocking change request to the window
-//! the user was typing in before opening Muelle's menu.
+//! the user was typing in before opening Harbor's menu.
 
 use windows::{
     Win32::{
@@ -67,7 +67,7 @@ impl Context {
         }
     }
 
-    /// Does not activate a layout in Muelle's thread or synthesize keyboard
+    /// Does not activate a layout in Harbor's thread or synthesize keyboard
     /// shortcuts. The receiving application remains in control of its input.
     pub fn request(self, layout: isize) -> Result<()> {
         use windows::Win32::Foundation::HWND;
@@ -309,7 +309,7 @@ mod tests {
             let window = CreateWindowExW(
                 Default::default(),
                 w!("STATIC"),
-                w!("Muelle keyboard test"),
+                w!("Harbor keyboard test"),
                 WS_POPUP,
                 0,
                 0,

@@ -1,16 +1,16 @@
 <div align="center">
 
-<img width="50%" alt="Muelle" src="https://github.com/user-attachments/assets/8c715a53-a0df-4780-9dd4-09ce3ccd9043" />
+<img width="50%" alt="Harbor" src="https://github.com/user-attachments/assets/8c715a53-a0df-4780-9dd4-09ce3ccd9043" />
 
   **Un dock léger, inspiré de macOS, pour Windows 10 et 11.**
 
-  Muelle remplace la barre des tâches de Windows par un dock personnalisable et
+  Harbor remplace la barre des tâches de Windows par un dock personnalisable et
   une barre de menus facultative à la manière de macOS.
 
   [English](README.md) · [Español](README.es.md) · **Français** · [繁體中文](README.zh-TW.md)
 </div>
 
-<img width="1500" height="436" alt="Le dock et la barre de menus de Muelle" src="https://github.com/user-attachments/assets/3c91b488-214d-453d-a8c2-a9e0dc7f245e" />
+<img width="1500" height="436" alt="Le dock et la barre de menus de Harbor" src="https://github.com/user-attachments/assets/3c91b488-214d-453d-a8c2-a9e0dc7f245e" />
 
 <img width="1000" height="259" alt="Agrandissement des icônes du dock" src="https://github.com/user-attachments/assets/e5b2ce63-cec1-4d1d-8ef1-a4fa1c668c40" />
 
@@ -61,24 +61,24 @@ Agrandissement fluide, aperçus des fenêtres en direct et effet génie facultat
   dock se ferme de façon inattendue.
 
 L'effet génie est **activé par défaut** et se désactive dans Réglages →
-Fenêtres. Tant qu'il est activé, Muelle désactive temporairement les
+Fenêtres. Tant qu'il est activé, Harbor désactive temporairement les
 transitions de Windows pour les fenêtres qu'il suit, afin de pouvoir jouer son
 animation de réduction ; ces transitions sont rétablies à la fermeture de
-Muelle.
+Harbor.
 
 ## Installer
 
-**[Télécharger Muelle-Setup.exe](https://github.com/crafter-station/Muelle/releases/latest/download/Muelle-Setup.exe)**
+**[Télécharger Harbor-Setup.exe](https://github.com/BrianLien09/Harbor/releases/latest/download/Harbor-Setup.exe)**
 (Windows 10 version 1903 ou ultérieure, ou Windows 11 ; 64 bits) ou choisissez
-une version dans les [Releases](https://github.com/crafter-station/Muelle/releases).
+une version dans les [Releases](https://github.com/BrianLien09/Harbor/releases).
 
-1. Lancez `Muelle-Setup.exe`. Il s'installe pour votre seul compte : sans
+1. Lancez `Harbor-Setup.exe`. Il s'installe pour votre seul compte : sans
    droits d'administrateur, sans assistant, en deux secondes environ.
-2. Muelle est récent : SmartScreen peut ne pas encore le reconnaître et
+2. Harbor est récent : SmartScreen peut ne pas encore le reconnaître et
    indiquer qu'il a protégé votre ordinateur. Choisissez **Informations
    complémentaires → Exécuter quand même**. Voir la
-   [politique de signature du code](https://muelle.crafter.run/code-signing-policy).
-3. Ouvrez **Muelle** depuis le menu Démarrer, puis choisissez **Dock** pour
+   [politique de signature du code](https://brianlien09.github.io/Harbor/code-signing-policy).
+3. Ouvrez **Harbor** depuis le menu Démarrer, puis choisissez **Dock** pour
    personnaliser le dock et la barre de menus.
 
 ## Essayer sous Windows
@@ -96,15 +96,15 @@ une version dans les [Releases](https://github.com/crafter-station/Muelle/releas
 Depuis la racine du dépôt :
 
 ```powershell
-cargo run -p muelle
+cargo run -p harbor
 ```
 
 Le dock masque la barre des tâches tant qu'il tourne. Appuyez sur **Ctrl+C**
-dans le terminal pour le quitter ; Muelle devrait rétablir la barre des tâches
+dans le terminal pour le quitter ; Harbor devrait rétablir la barre des tâches
 automatiquement. S'il faut la rétablir à la main :
 
 ```powershell
-cargo run -p muelle -- --restore
+cargo run -p harbor -- --restore
 ```
 
 ### Lancer Réglages
@@ -144,31 +144,31 @@ pnpm build
 |---|---|
 | `apps/dock` | Dock Windows natif |
 | `apps/settings` | App de bureau Tauri pour les réglages |
-| `crates/muelle-core` | Logique de disposition et d'animation, indépendante de la plateforme |
-| `crates/muelle-shell` | Intégration au shell Windows |
-| `crates/muelle-config` | Réglages partagés et persistance |
-| `muelle` | Site web Astro |
+| `crates/harbor-core` | Logique de disposition et d'animation, indépendante de la plateforme |
+| `crates/harbor-shell` | Intégration au shell Windows |
+| `crates/harbor-config` | Réglages partagés et persistance |
+| `harbor` | Site web Astro |
 
 ## Confidentialité
 
-Muelle ne collecte aucune donnée, n'a pas de télémétrie et n'envoie jamais rien
+Harbor ne collecte aucune donnée, n'a pas de télémétrie et n'envoie jamais rien
 au projet. Il fait deux sortes de requêtes réseau, toutes deux facultatives :
 
 - **Mises à jour :** Réglages demande à GitHub Releases s'il existe une
   nouvelle version à son ouverture, et une fois par jour, quelques minutes
-  après l'allumage de l'ordinateur, Muelle fait de même en arrière-plan et
+  après l'allumage de l'ordinateur, Harbor fait de même en arrière-plan et
   installe ce qu'il trouve (le dock lui-même n'utilise jamais le réseau).
   Désactivez l'installation dans Réglages → Système → *Installer
   automatiquement les mises à jour*, ou le tout avec *Rechercher
   automatiquement les mises à jour*.
 - **Utilisation des fournisseurs d'IA :** tant qu'un client pris en charge
-  tourne, Muelle lit sa connexion locale existante et demande à ce fournisseur
+  tourne, Harbor lit sa connexion locale existante et demande à ce fournisseur
   les limites disponibles de l'abonnement toutes les cinq minutes tant que
   l'îlot est visible, ou quand vous appuyez sur Actualiser. Pour Gemini CLI et
   Antigravity, les quotas Gemini Pro et Flash s'affichent séparément quand ils
   sont disponibles ; Antigravity est interrogé via son service local. Les
-  identifiants restent en mémoire et ne sont jamais enregistrés par Muelle.
+  identifiants restent en mémoire et ne sont jamais enregistrés par Harbor.
   Désactivez-la dans Réglages → Barre de menus → *Afficher l'utilisation des
   fournisseurs d'IA*.
 
-Détails : [muelle.crafter.run/privacy](https://muelle.crafter.run/privacy).
+Détails : [brianlien09.github.io/Harbor/privacy](https://brianlien09.github.io/Harbor/privacy).

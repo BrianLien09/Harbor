@@ -2,7 +2,7 @@
 //! limits live in ACCESSORIES.md. No settings, pairing or firmware commands.
 
 use anyhow::{Result, ensure};
-use muelle_shell::accessories::Kind;
+use harbor_shell::accessories::Kind;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

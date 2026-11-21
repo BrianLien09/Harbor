@@ -4,7 +4,7 @@
 use std::cell::Cell;
 
 use anyhow::Result;
-use muelle_core::{
+use harbor_core::{
     frame::{DockEdge, Frame as DockFrame},
     layout::{ItemKind, Layout, Rect},
     magnify::Magnified,
@@ -297,7 +297,7 @@ fn attention_rect(icon: Rect, scale: f32) -> Rect {
 #[cfg(test)]
 mod attention_tests {
     use super::*;
-    use muelle_core::{
+    use harbor_core::{
         layout::{Metrics, layout},
         magnify::{Magnifier, magnify},
     };

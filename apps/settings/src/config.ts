@@ -5,7 +5,7 @@ export type IslandStyle = "notch" | "bubble";
 export type GenieSpeed = "normal" | "fast" | "faster";
 export type DockPosition = "left" | "bottom" | "right";
 
-/** Mirrors `muelle_config::Config`. */
+/** Mirrors `harbor_config::Config`. */
 export interface Config {
   version: number;
   pinned: string[];

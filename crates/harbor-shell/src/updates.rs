@@ -1,4 +1,4 @@
-//! When Muelle last looked for an update. Kept in `HKCU\Software\Muelle`
+//! When Harbor last looked for an update. Kept in `HKCU\Software\Harbor`
 //! (which the uninstaller removes), so it looks once a day however often the
 //! computer is restarted or the dock relaunched.
 
@@ -12,11 +12,11 @@ use windows::{
     core::{PCWSTR, w},
 };
 
-const MUELLE_KEY: PCWSTR = w!(r"Software\Muelle");
+const HARBOR_KEY: PCWSTR = w!(r"Software\Harbor");
 const LAST_CHECK: PCWSTR = w!("LastUpdateCheck");
 
 /// How long until the next look is due, `every` after the last one: zero if
-/// it is due now, or if Muelle never looked.
+/// it is due now, or if Harbor never looked.
 #[must_use]
 pub fn due_in(every: Duration) -> Duration {
     let Some(last) = last_check() else {
@@ -30,7 +30,7 @@ pub fn due_in(every: Duration) -> Duration {
     every.saturating_sub(Duration::from_secs(now - last))
 }
 
-/// Records that Muelle looked for an update now.
+/// Records that Harbor looked for an update now.
 pub fn mark_checked() {
     let value = now_seconds().to_le_bytes();
     let mut key = HKEY::default();
@@ -38,7 +38,7 @@ pub fn mark_checked() {
     unsafe {
         if RegCreateKeyExW(
             HKEY_CURRENT_USER,
-            MUELLE_KEY,
+            HARBOR_KEY,
             None,
             None,
             REG_OPTION_NON_VOLATILE,
@@ -63,7 +63,7 @@ fn last_check() -> Option<u64> {
     unsafe {
         RegGetValueW(
             HKEY_CURRENT_USER,
-            MUELLE_KEY,
+            HARBOR_KEY,
             LAST_CHECK,
             RRF_RT_REG_QWORD,
             None,

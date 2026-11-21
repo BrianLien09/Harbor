@@ -250,7 +250,7 @@ pub fn downloads_folder() -> Option<String> {
     }
 }
 
-/// The languages Muelle's text comes in.
+/// The languages Harbor's text comes in.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum UiLanguage {
     Spanish,
@@ -259,7 +259,7 @@ pub enum UiLanguage {
     TraditionalChinese,
 }
 
-/// The Windows display language, or English when Muelle has no text in it.
+/// The Windows display language, or English when Harbor has no text in it.
 #[must_use]
 pub fn ui_language() -> UiLanguage {
     const LANG_SPANISH: u16 = 0x0A;

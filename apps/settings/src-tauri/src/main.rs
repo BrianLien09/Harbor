@@ -1,4 +1,4 @@
-//! Muelle settings: a separate process that exists only while its window is
+//! Harbor settings: a separate process that exists only while its window is
 //! open. It edits the configuration file and tells the dock to reload it.
 //!
 //! With `--update` it opens no window: the dock starts it that way once a
@@ -9,26 +9,26 @@
 
 use std::{env, io, path::PathBuf, process::Command, sync::Mutex, time::Duration};
 
-use muelle_config::Config;
-use muelle_shell::{autostart, dock_link, launcher};
+use harbor_config::Config;
+use harbor_shell::{autostart, dock_link, launcher};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State, WebviewWindowBuilder};
 use tauri_plugin_updater::{Update, UpdaterExt};
 
 /// The dock is installed next to this app.
 fn dock_exe() -> io::Result<PathBuf> {
-    Ok(env::current_exe()?.with_file_name("muelle.exe"))
+    Ok(env::current_exe()?.with_file_name("harbor.exe"))
 }
 
 #[tauri::command]
 fn get_config() -> Config {
-    muelle_config::load(&muelle_config::default_path())
+    harbor_config::load(&harbor_config::default_path())
         .ok()
         .flatten()
         .unwrap_or_default()
 }
 
-/// The defaults live in `muelle-config`; the window asks for them to reset.
+/// The defaults live in `harbor-config`; the window asks for them to reset.
 #[tauri::command]
 fn default_config() -> Config {
     Config::default()
@@ -37,7 +37,7 @@ fn default_config() -> Config {
 #[tauri::command]
 async fn set_config(patch: serde_json::Map<String, serde_json::Value>) -> Result<Config, String> {
     tauri::async_runtime::spawn_blocking(move || {
-        let config = muelle_config::update_preferences(&muelle_config::default_path(), patch)
+        let config = harbor_config::update_preferences(&harbor_config::default_path(), patch)
             .map_err(|error| error.to_string())?;
         dock_link::notify_config_changed();
         Ok(config)
@@ -50,14 +50,14 @@ async fn set_config(patch: serde_json::Map<String, serde_json::Value>) -> Result
 /// genie does not play, and the window says so.
 #[tauri::command]
 fn windows_animations() -> bool {
-    muelle_shell::system::animations_enabled()
+    harbor_shell::system::animations_enabled()
 }
 
 /// The page of Windows Settings with that switch: "Animation effects" on
 /// Windows 11, "Show animations in Windows" on Windows 10.
 #[tauri::command]
 fn open_animation_settings() -> Result<(), String> {
-    let page = if muelle_shell::system::is_windows_11() {
+    let page = if harbor_shell::system::is_windows_11() {
         "ms-settings:easeofaccess-visualeffects"
     } else {
         "ms-settings:easeofaccess-display"
@@ -78,7 +78,7 @@ async fn pick_folder(
         .map(|hwnd| hwnd.0 as isize)
         .unwrap_or_default();
     tauri::async_runtime::spawn_blocking(move || {
-        muelle_shell::folder::pick(owner, current.as_deref())
+        harbor_shell::folder::pick(owner, current.as_deref())
     })
     .await
     .map_err(|error| error.to_string())
@@ -90,7 +90,7 @@ async fn get_autostart() -> Result<bool, String> {
     tauri::async_runtime::spawn_blocking(move || {
         Ok(
             autostart::enabled_for(&dock.to_string_lossy()).unwrap_or_else(|error| {
-                muelle_shell::log::line(&format!(
+                harbor_shell::log::line(&format!(
                     "no se pudo consultar el inicio automático: {error}"
                 ));
                 // The cached choice still lets Settings open if the scheduler
@@ -154,7 +154,7 @@ struct Progress {
     total: Option<u64>,
 }
 
-const RELEASES: &str = "https://github.com/crafter-station/Muelle/releases/";
+const RELEASES: &str = "https://github.com/BrianLien09/Harbor/releases/";
 
 /// The update manifest is not signed (only the installer is), so the only
 /// link it may open is a release page of this repository.
@@ -174,8 +174,7 @@ fn open_release_notes(url: String) -> Result<(), String> {
 #[tauri::command]
 async fn open_repository() -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(|| {
-        launcher::open("https://github.com/crafter-station/Muelle")
-            .map_err(|error| error.to_string())
+        launcher::open("https://github.com/BrianLien09/Harbor").map_err(|error| error.to_string())
     })
     .await
     .map_err(|error| error.to_string())?
@@ -187,7 +186,7 @@ async fn wallpaper_preview(window: tauri::WebviewWindow) -> Option<String> {
     let hwnd = window.hwnd().ok()?.0 as isize;
     tauri::async_runtime::spawn_blocking(move || {
         use base64::Engine;
-        let image = muelle_shell::imagery::wallpaper_preview(hwnd)?;
+        let image = harbor_shell::imagery::wallpaper_preview(hwnd)?;
         let mut rgba = image.bgra;
         for pixel in rgba.as_chunks_mut::<4>().0 {
             // Wallpaper decodes are opaque in normal use. Unpremultiply when
@@ -269,7 +268,7 @@ async fn update_in_background(app: AppHandle) {
     if let Some(update) = found.filter(|_| !window_opened())
         && let Err(error) = update.download_and_install(|_, _| {}, || {}).await
     {
-        eprintln!("muelle-settings: actualización: {error}");
+        eprintln!("harbor-settings: actualización: {error}");
     }
     if !window_opened() {
         app.exit(0);
@@ -290,19 +289,19 @@ fn show_window(app: &AppHandle) {
     if let Err(error) =
         WebviewWindowBuilder::from_config(app, config).and_then(|window| window.build())
     {
-        eprintln!("muelle-settings: {error}");
+        eprintln!("harbor-settings: {error}");
     }
 }
 
 fn main() {
-    muelle_config::migrate_legacy_folder();
+    harbor_config::migrate_legacy_folder();
     let background = env::args().any(|arg| arg == UPDATE_ARG);
     // The Start menu entry opens this app: it also brings back a dock the user quit.
     if !background
         && !dock_link::is_running()
         && let Err(error) = dock_exe().and_then(|dock| Command::new(dock).spawn())
     {
-        eprintln!("muelle-settings: no se pudo abrir el dock: {error}");
+        eprintln!("harbor-settings: no se pudo abrir el dock: {error}");
     }
     let result = tauri::Builder::default()
         // First, so a second launch exits before doing anything else.
@@ -340,6 +339,6 @@ fn main() {
         ])
         .run(tauri::generate_context!());
     if let Err(error) = result {
-        eprintln!("muelle-settings: {error}");
+        eprintln!("harbor-settings: {error}");
     }
 }

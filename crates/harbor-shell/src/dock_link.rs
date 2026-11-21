@@ -1,4 +1,4 @@
-//! How other Muelle processes talk to the running dock.
+//! How other Harbor processes talk to the running dock.
 
 use windows::{
     Win32::{
@@ -8,9 +8,9 @@ use windows::{
     core::{PCWSTR, w},
 };
 
-pub const DOCK_WINDOW_CLASS: PCWSTR = w!("MuelleWindow");
+pub const DOCK_WINDOW_CLASS: PCWSTR = w!("HarborWindow");
 /// Name of the registered window message meaning "the configuration file changed".
-pub const CONFIG_CHANGED: PCWSTR = w!("Muelle.ConfigChanged");
+pub const CONFIG_CHANGED: PCWSTR = w!("Harbor.ConfigChanged");
 
 /// `true` if a dock is running in this session.
 #[must_use]

@@ -7,8 +7,8 @@
 use std::time::Instant;
 
 use anyhow::Result;
-use muelle_core::frame::DockEdge;
-use muelle_shell::{system::animations_enabled, tracker};
+use harbor_core::frame::DockEdge;
+use harbor_shell::{system::animations_enabled, tracker};
 use windows::{
     UI::{
         Color,
@@ -375,7 +375,7 @@ impl GroupView {
         // `view` owns the HWND even if the graphics setup below fails.
         let hwnd = unsafe {
             let instance = GetModuleHandleW(None)?;
-            let class = w!("MuelleGroupView");
+            let class = w!("HarborGroupView");
             RegisterClassW(&WNDCLASSW {
                 lpfnWndProc: Some(group_view_proc),
                 hInstance: instance.into(),
@@ -386,7 +386,7 @@ impl GroupView {
             CreateWindowExW(
                 WS_EX_NOREDIRECTIONBITMAP | WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
                 class,
-                w!("Muelle group"),
+                w!("Harbor group"),
                 WS_POPUP,
                 0,
                 0,
@@ -476,7 +476,7 @@ impl GroupView {
             if let Some(badge) = &mut item.attention {
                 badge.set_visible(on)?;
                 badge.place(
-                    muelle_core::layout::Rect {
+                    harbor_core::layout::Rect {
                         x: 0.0,
                         y: 0.0,
                         width: (rect.right - rect.left) as f32,
@@ -861,7 +861,7 @@ impl DragGhost {
         // the HWND as soon as it exists.
         let hwnd = unsafe {
             let instance = GetModuleHandleW(None)?;
-            let class = w!("MuelleDragGhost");
+            let class = w!("HarborDragGhost");
             RegisterClassW(&WNDCLASSW {
                 lpfnWndProc: Some(ghost_proc),
                 hInstance: instance.into(),
@@ -878,7 +878,7 @@ impl DragGhost {
                     | WS_EX_TOOLWINDOW
                     | WS_EX_NOACTIVATE,
                 class,
-                w!("Muelle"),
+                w!("Harbor"),
                 WS_POPUP,
                 0,
                 0,

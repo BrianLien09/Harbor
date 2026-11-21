@@ -5,12 +5,12 @@
     "targets": [
       "nsis"
     ],
-    "publisher": "Muelle",
-    "homepage": "https://github.com/crafter-station/Muelle",
+    "publisher": "Harbor",
+    "homepage": "https://github.com/BrianLien09/Harbor",
     "shortDescription": "Dock estilo macOS para Windows",
     "category": "Utility",
     "externalBin": [
-      "binaries/muelle"
+      "binaries/harbor"
     ],
     "windows": {
       "nsis": {

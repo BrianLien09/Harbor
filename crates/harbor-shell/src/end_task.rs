@@ -311,7 +311,7 @@ mod tests {
             };
             std::thread::spawn(move || {
                 for line in BufReader::new(stdout).lines().map_while(Result::ok) {
-                    if let Some(handles) = line.strip_prefix("MUELLE_END_TASK_FIXTURE ") {
+                    if let Some(handles) = line.strip_prefix("HARBOR_END_TASK_FIXTURE ") {
                         let _ = send.send(handles.to_owned());
                     }
                 }
@@ -354,7 +354,7 @@ mod tests {
             CreateWindowExW(
                 WS_EX_TOOLWINDOW,
                 windows::core::w!("STATIC"),
-                windows::core::w!("Muelle frozen end-task fixture"),
+                windows::core::w!("Harbor frozen end-task fixture"),
                 WS_OVERLAPPEDWINDOW,
                 -32000,
                 -32000,
@@ -369,7 +369,7 @@ mod tests {
         let first = create()?;
         let second = create()?;
         println!(
-            "MUELLE_END_TASK_FIXTURE {} {}",
+            "HARBOR_END_TASK_FIXTURE {} {}",
             first.0 as isize, second.0 as isize
         );
         let _ = std::io::stdout().flush();
@@ -385,7 +385,7 @@ mod tests {
                     let added = CreateWindowExW(
                         WS_EX_APPWINDOW | WS_EX_NOACTIVATE,
                         windows::core::w!("STATIC"),
-                        windows::core::w!("Muelle extra window test"),
+                        windows::core::w!("Harbor extra window test"),
                         WS_OVERLAPPEDWINDOW,
                         -32000,
                         -32000,
@@ -400,7 +400,7 @@ mod tests {
                 },
                 _ => {}
             }
-            println!("MUELLE_END_TASK_FIXTURE OK");
+            println!("HARBOR_END_TASK_FIXTURE OK");
             let _ = std::io::stdout().flush();
         }
         Ok(())

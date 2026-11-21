@@ -2,7 +2,7 @@ const MANIFEST: &str = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?
 <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0" xmlns:asmv3="urn:schemas-microsoft-com:asm.v3">
   <assemblyIdentity
     type="win32"
-    name="CrafterStation.Muelle"
+    name="CrafterStation.Harbor"
     version="1.0.0.0"
     processorArchitecture="*"
   />
@@ -42,13 +42,13 @@ const MANIFEST: &str = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?
 "#;
 
 fn main() {
-    println!("cargo:rerun-if-changed=../../assets/brand/muelle.ico");
+    println!("cargo:rerun-if-changed=../../assets/brand/harbor.ico");
     println!("cargo:rerun-if-changed=build.rs");
     let mut resources = winresource::WindowsResource::new();
-    resources.set_icon("../../assets/brand/muelle.ico");
+    resources.set_icon("../../assets/brand/harbor.ico");
     // Code signing checks that every signed file names the same product.
-    resources.set("ProductName", "Muelle");
-    resources.set("FileDescription", "Muelle dock");
+    resources.set("ProductName", "Harbor");
+    resources.set("FileDescription", "Harbor dock");
     // Ensure Microsoft.Windows.Common-Controls 6.0.0.0 is declared so shell
     // extensions (like utshellext.dll) find modern exports like LoadIconWithScaleDown
     // (ordinal 381) instead of failing on comctl32 v5 (issue #23).

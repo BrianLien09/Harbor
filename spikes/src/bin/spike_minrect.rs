@@ -53,7 +53,7 @@ unsafe extern "system" fn on_event(
         let _ = GetWindowPlacement(hwnd, &mut placement);
         println!(
             "computed (whole, visible): {:?}",
-            muelle_shell::tracker::rect_before_minimize(hwnd.0 as isize, None)
+            harbor_shell::tracker::rect_before_minimize(hwnd.0 as isize, None)
         );
         println!(
             "at MINIMIZESTART: iconic={} window={:?} frame={:?} flags={:#x} showCmd={} normal={:?}",
@@ -89,12 +89,12 @@ fn main() {
         RegisterClassW(&WNDCLASSW {
             lpfnWndProc: Some(proc),
             hInstance: instance.into(),
-            lpszClassName: w!("MuelleSpikeMinRect"),
+            lpszClassName: w!("HarborSpikeMinRect"),
             ..Default::default()
         });
         let Ok(hwnd) = CreateWindowExW(
             Default::default(),
-            w!("MuelleSpikeMinRect"),
+            w!("HarborSpikeMinRect"),
             w!("min rect"),
             WS_OVERLAPPEDWINDOW,
             300,

@@ -73,7 +73,7 @@ ${StrLoc}
 
 Var PassiveMode
 Var UpdateMode
-Var MuelleFirstInstall
+Var HarborFirstInstall
 Var NoShortcutMode
 Var WixMode
 Var OldMainBinaryName
@@ -509,7 +509,7 @@ LangString choowHowToInstall 0 ""
 {{/each}}
 
 Function .onInit
-  ; Muelle: always passive. Installing is a single double-click: no wizard
+  ; Harbor: always passive. Installing is a single double-click: no wizard
   ; pages, only a progress window.
   StrCpy $PassiveMode 1
 
@@ -544,7 +544,7 @@ Function .onInit
         StrCpy $INSTDIR "$PROGRAMFILES\${PRODUCTNAME}"
       ${EndIf}
     !else if "${INSTALLMODE}" == "currentUser"
-      ; Muelle: the conventional per-user location; $LOCALAPPDATA\Muelle holds
+      ; Harbor: the conventional per-user location; $LOCALAPPDATA\Harbor holds
       ; the dock's icon cache.
       StrCpy $INSTDIR "$LOCALAPPDATA\Programs\${PRODUCTNAME}"
     !endif
@@ -558,11 +558,11 @@ Function .onInit
   !endif
 
   ; Read the existing registration before the install section replaces it.
-  StrCpy $MuelleFirstInstall 0
+  StrCpy $HarborFirstInstall 0
   ReadRegStr $R0 SHCTX "${UNINSTKEY}" "UninstallString"
   ${If} $R0 == ""
-  ${AndIfNot} ${FileExists} "$INSTDIR\muelle.exe"
-    StrCpy $MuelleFirstInstall 1
+  ${AndIfNot} ${FileExists} "$INSTDIR\harbor.exe"
+    StrCpy $HarborFirstInstall 1
   ${EndIf}
 
   ; Abort downgrades if they are disabled, in the modes that skip the reinstall page choice:
@@ -778,7 +778,7 @@ Section Install
     Call CreateOrUpdateStartMenuShortcut
   !insertmacro MUI_STARTMENU_WRITE_END
 
-  ; Muelle: no desktop shortcut; the app lives in the Start menu and the dock.
+  ; Harbor: no desktop shortcut; the app lives in the Start menu and the dock.
 
   !ifmacrodef NSIS_HOOK_POSTINSTALL
     !insertmacro NSIS_HOOK_POSTINSTALL
@@ -804,7 +804,7 @@ Function .onInstSuccess
   ${EndIf}
   ; A first interactive install introduces Settings. Silent installs and
   ; upgrades keep the existing launch behavior.
-  ${If} $MuelleFirstInstall = 1
+  ${If} $HarborFirstInstall = 1
   ${AndIf} $UpdateMode <> 1
   ${AndIfNot} ${Silent}
     Call RunMainBinary

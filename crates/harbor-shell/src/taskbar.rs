@@ -31,7 +31,7 @@ const GHOST_STYLES: isize = (WS_EX_LAYERED.0 | WS_EX_TRANSPARENT.0) as isize;
 
 fn state_file() -> PathBuf {
     PathBuf::from(env::var_os("LOCALAPPDATA").unwrap_or_default())
-        .join("Muelle")
+        .join("Harbor")
         .join("taskbar-original")
 }
 
@@ -80,7 +80,7 @@ fn take_over_taskbars(bars: &[HWND], file: &std::path::Path) -> bool {
 }
 
 /// What the dock and its watchdog do when the dock stops: give the taskbar
-/// back, except while Windows shuts down, restarts or signs out with Muelle
+/// back, except while Windows shuts down, restarts or signs out with Harbor
 /// set to start again. Then the taskbar stays auto-hidden for the next
 /// sign-in; given back, Windows showed it in full at every start until the
 /// dock took it over again. Turning autostart off, quitting or uninstalling
@@ -188,7 +188,7 @@ mod tests {
 
     #[test]
     fn an_absent_shell_does_not_save_a_false_original_taskbar_state() {
-        let file = env::temp_dir().join(format!("muelle-absent-shell-{}.txt", std::process::id()));
+        let file = env::temp_dir().join(format!("harbor-absent-shell-{}.txt", std::process::id()));
         assert!(!file.exists());
         assert!(!take_over_taskbars(&[], &file));
         assert!(!file.exists());
@@ -207,7 +207,7 @@ mod tests {
             let window = CreateWindowExW(
                 Default::default(),
                 w!("STATIC"),
-                w!("Muelle taskbar test"),
+                w!("Harbor taskbar test"),
                 WS_POPUP,
                 0,
                 0,

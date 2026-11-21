@@ -1,4 +1,4 @@
-//! Persistent Muelle configuration stored in `%APPDATA%\Muelle\config.json`.
+//! Persistent Harbor configuration stored in `%APPDATA%\Harbor\config.json`.
 
 use std::{
     env,
@@ -46,7 +46,7 @@ pub struct Config {
     pub groups: Vec<DockGroup>,
     pub recent: Vec<String>,
     /// The apps pinned to the Windows taskbar when the dock last looked, to
-    /// bring pins and unpins made there (even while Muelle was closed) to the
+    /// bring pins and unpins made there (even while Harbor was closed) to the
     /// dock. `None` until it first looks.
     pub taskbar_pins: Option<Vec<String>>,
     #[serde(alias = "auto_hide")]
@@ -100,7 +100,7 @@ pub struct Config {
     /// running out, the charger, energy saver).
     pub mascot: bool,
     /// Settings asks GitHub Releases for a newer version when it opens. The
-    /// only network access in Muelle, so it can be turned off.
+    /// only network access in Harbor, so it can be turned off.
     pub check_updates: bool,
     /// With `check_updates`: once a day, while the user is away from the
     /// computer, new versions are downloaded and installed without asking.
@@ -258,10 +258,10 @@ impl Default for Config {
     }
 }
 
-/// Moves the settings folder from before the app was renamed to Muelle.
+/// Moves the settings folder from before the app was renamed to Harbor.
 pub fn migrate_legacy_folder() {
     let roaming = PathBuf::from(env::var_os("APPDATA").unwrap_or_default());
-    let (old, new) = (roaming.join("WinDock"), roaming.join("Muelle"));
+    let (old, new) = (roaming.join("WinDock"), roaming.join("Harbor"));
     if old.is_dir() && !new.exists() {
         let _ = fs::rename(old, new);
     }
@@ -270,7 +270,7 @@ pub fn migrate_legacy_folder() {
 #[must_use]
 pub fn default_path() -> PathBuf {
     PathBuf::from(env::var_os("APPDATA").unwrap_or_default())
-        .join("Muelle")
+        .join("Harbor")
         .join("config.json")
 }
 
@@ -389,7 +389,7 @@ mod tests {
     use super::*;
 
     fn scratch(name: &str) -> PathBuf {
-        let folder = env::temp_dir().join(format!("muelle-test-{}-{name}", std::process::id()));
+        let folder = env::temp_dir().join(format!("harbor-test-{}-{name}", std::process::id()));
         let _ = fs::remove_dir_all(&folder);
         folder.join("config.json")
     }
@@ -454,7 +454,7 @@ mod tests {
     fn settings_patch_keeps_the_dock_groups() -> Result<(), ConfigError> {
         let path = scratch("settings-patch-groups");
         let group = DockGroup {
-            id: "muelle:group:1".into(),
+            id: "harbor:group:1".into(),
             apps: vec!["a".into(), "b".into()],
         };
         save(
@@ -520,14 +520,14 @@ mod tests {
         save(&path, &Config::default()).ok();
         fs::write(
             &path,
-            r#"{"pinned":["a","muelle:group:1"],"groups":[{"id":"muelle:group:1","apps":["b","c"]}]}"#,
+            r#"{"pinned":["a","harbor:group:1"],"groups":[{"id":"harbor:group:1","apps":["b","c"]}]}"#,
         )
         .ok();
         let config = load(&path).ok().flatten().unwrap_or_default();
         assert_eq!(
             config.groups,
             [DockGroup {
-                id: "muelle:group:1".into(),
+                id: "harbor:group:1".into(),
                 apps: vec!["b".into(), "c".into()],
             }]
         );

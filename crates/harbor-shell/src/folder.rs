@@ -180,7 +180,7 @@ mod tests {
     fn list_should_leave_out_hidden_items_and_mark_folders() -> io::Result<()> {
         // SAFETY: The shell needs COM on this test thread.
         let _ = unsafe { CoInitializeEx(None, COINIT_APARTMENTTHREADED) };
-        let root = std::env::temp_dir().join(format!("muelle-folder-{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!("harbor-folder-{}", std::process::id()));
         let _ = fs::remove_dir_all(&root);
         fs::create_dir_all(root.join("Sub"))?;
         fs::write(root.join("note.txt"), b"x")?;
