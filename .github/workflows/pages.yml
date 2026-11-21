@@ -1,0 +1,54 @@
+name: Pages
+
+# 推送到 main 且網站內容有變動時，把 harbor/ 建置後部署到 GitHub Pages。
+# 第一次使用需到 Settings → Pages，把 Source 設為「GitHub Actions」。
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'harbor/**'
+      - 'CHANGELOG.md'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: harbor/pnpm-lock.yaml
+      - name: Install dependencies
+        working-directory: harbor
+        run: pnpm install --frozen-lockfile
+      - name: Build
+        working-directory: harbor
+        run: pnpm build
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: harbor/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

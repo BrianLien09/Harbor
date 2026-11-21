@@ -1,0 +1,15 @@
+{
+  "name": "Harbor",
+  "short_name": "Harbor",
+  "description": "A macOS-style dock for Windows 11.",
+  "start_url": "/Harbor/",
+  "scope": "/Harbor/",
+  "display": "standalone",
+  "lang": "en",
+  "theme_color": "#0c0e0f",
+  "background_color": "#f5f3ec",
+  "icons": [
+    { "src": "/Harbor/android-chrome-192x192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/Harbor/android-chrome-512x512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

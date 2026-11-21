@@ -1,0 +1,101 @@
+---
+import { Image } from "astro:assets";
+import kDecor from "@/assets/decorators/k-decor.webp";
+import WindowMock from "@/components/dock/WindowMock.astro";
+import Section from "@/components/layout/Section.astro";
+import Button from "@/components/ui/Button.astro";
+import Icon from "@/components/ui/Icon.astro";
+import StatStrip from "@/components/ui/StatStrip.astro";
+import { site } from "@/data/site";
+---
+
+<Section id="top" spacing={false} class="pt-20 text-center">
+
+  <h1 data-h class="mt-[18px] text-[clamp(2.75rem,7.4vw,6rem)]">
+    <span class="relative inline-block">
+      Your Dock<Image
+        src={kDecor}
+        alt=""
+        class="pointer-events-none absolute top-[0.6em] -right-[0.6em] w-[0.82em] select-none -mask-linear-50 mask-linear-from-60% mask-linear-to-80%"
+      />
+    </span>
+    <span class="block bg-gradient-to-r from-neutral-600 via-neutral-400 to-white bg-clip-text text-transparent">now on Windows.</span>
+  </h1>
+
+  <p data-h class="mx-auto mt-[22px] mb-[30px] max-w-[560px] text-lg text-mute">
+    Harbor replaces the Windows taskbar with a glass dock: icons grow under your cursor,
+    windows fold into the dock with the Genie effect, and a pixel crab shows up when it
+    matters. Free, open source and light.
+  </p>
+
+  <div data-h class="flex flex-wrap items-center justify-center gap-3">
+    <Button href={site.download}>
+      Download for Windows
+      <span
+        data-installer-download-count
+        aria-label="Total installer downloads"
+        class="rounded-full bg-ink/10 px-2 py-0.5 font-mono text-xs font-semibold"
+        hidden
+      ></span>
+      <Icon name="arrow-right" size={18} />
+    </Button>
+    <Button href="#dock" variant="secondary">Take a look</Button>
+  </div>
+
+  <div data-hero-mock>
+    <WindowMock />
+  </div>
+
+  <StatStrip class="mt-12" />
+</Section>
+
+<script>
+  import { site } from "@/data/site";
+  import { initHeroMotion } from "@/scripts/hero";
+
+  initHeroMotion();
+
+  const count = document.querySelector<HTMLElement>(
+    "[data-installer-download-count]",
+  );
+
+  if (count) {
+    try {
+      // GitHub Pages has no server code, so the browser asks the public Releases API directly.
+      const response = await fetch(`${site.releasesApi}?per_page=100`, {
+        headers: { Accept: "application/vnd.github+json" },
+      });
+      if (!response.ok) {
+        throw new Error(`GitHub Releases API returned ${response.status}`);
+      }
+
+      const releases: unknown = await response.json();
+      if (!Array.isArray(releases)) {
+        throw new Error("GitHub Releases API returned an invalid response");
+      }
+
+      // Count installers only; updater manifests and signatures are not downloads.
+      let total = 0;
+      for (const release of releases) {
+        const assets: unknown = release?.assets;
+        if (!Array.isArray(assets)) continue;
+        for (const asset of assets) {
+          if (typeof asset?.name === "string" && asset.name.toLowerCase().endsWith(".exe")) {
+            total += Number(asset.download_count) || 0;
+          }
+        }
+      }
+
+      // 沒有任何下載時不顯示數字，避免畫面出現 0。
+      if (total > 0) {
+        count.textContent = new Intl.NumberFormat("en-US", {
+          notation: "compact",
+          maximumFractionDigits: 1,
+        }).format(total);
+        count.hidden = false;
+      }
+    } catch (error) {
+      console.error("Could not load Harbor installer download count", error);
+    }
+  }
+</script>
