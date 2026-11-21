@@ -7,7 +7,7 @@ export interface Release {
   /** ISO date the GitHub release was published, when the API answered at build time. */
   date: string | null;
   url: string;
-  /** English bullets, rendered as HTML with inline code. */
+  /** 該版本的所有條列（繁體中文），轉成含行內程式碼的 HTML。 */
   changes: string[];
 }
 
@@ -59,12 +59,14 @@ export async function getReleases(): Promise<Release[]> {
   return sections
     .map((section) => {
       const version = section.slice(0, section.indexOf("]"));
-      const english = section.match(/^### English\n([\s\S]*?)(?=^### |$(?![\s\S]))/m)?.[1] ?? "";
+      // CHANGELOG 已改成只寫繁體中文，版本內可能再用 `###` 分組；
+      // 分組標題不是條列，parseBullets 會略過，所以直接取整段。
+      const body = section.slice(section.indexOf("\n") + 1);
       return {
         version,
         date: dates.get(version) ?? null,
         url: `${site.releases}/tag/v${version}`,
-        changes: parseBullets(english),
+        changes: parseBullets(body),
       };
     })
     .filter((release) => release.version !== "Unreleased" && release.changes.length > 0);
