@@ -32,6 +32,7 @@ import { UpdateBanner } from "./UpdateBanner";
 import en from "./i18n/en.json";
 import es from "./i18n/es.json";
 import fr from "./i18n/fr.json";
+import zhTW from "./i18n/zh-TW.json";
 
 type UpdateState =
   | { kind: "off" }
@@ -62,15 +63,20 @@ const SAVE_DELAY_MS = 60;
 /** How long the reset button stays armed after the first click. */
 const RESET_CONFIRM_MS = 4000;
 
-const TEXTS: Record<Exclude<Language, "auto">, Texts> = { es, en, fr };
+const TEXTS: Record<Exclude<Language, "auto">, Texts> = { es, en, fr, "zh-TW": zhTW };
 
 function textsFor(language: Language): Texts {
   if (language !== "auto") {
     return TEXTS[language];
   }
   // Follow the Windows display language, English when there is no text in it.
-  const windows = navigator.language.toLowerCase().slice(0, 2);
-  return windows === "es" || windows === "fr" ? TEXTS[windows] : en;
+  const windows = navigator.language.toLowerCase();
+  // Only the Traditional-character locales get the Chinese text; zh-CN stays on English.
+  if (windows === "zh-tw" || windows === "zh-hk" || windows === "zh-mo" || windows.startsWith("zh-hant")) {
+    return zhTW;
+  }
+  const primary = windows.slice(0, 2);
+  return primary === "es" || primary === "fr" ? TEXTS[primary] : en;
 }
 
 export function App() {
@@ -543,6 +549,7 @@ export function App() {
                       { value: "es", label: "Español" },
                       { value: "en", label: "English" },
                       { value: "fr", label: "Français" },
+                      { value: "zh-TW", label: "繁體中文" },
                     ]}
                     onChange={(language) => update({ language })}
                   />

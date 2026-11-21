@@ -7,7 +7,7 @@
   Muelle remplace la barre des tâches de Windows par un dock personnalisable et
   une barre de menus facultative à la manière de macOS.
 
-  [English](README.md) · [Español](README.es.md) · **Français**
+  [English](README.md) · [Español](README.es.md) · **Français** · [繁體中文](README.zh-TW.md)
 </div>
 
 <img width="1500" height="436" alt="Le dock et la barre de menus de Muelle" src="https://github.com/user-attachments/assets/3c91b488-214d-453d-a8c2-a9e0dc7f245e" />

@@ -1,4 +1,4 @@
-//! User-facing dock text in Spanish, English and French. The language follows
+//! User-facing dock text in Spanish, English, French and Traditional Chinese. The language follows
 //! the Windows display language unless the user overrides it in Settings.
 //! `&` marks the menu access key.
 
@@ -203,7 +203,57 @@ const FR: Strings = Strings {
     remove_from_dock: "&Retirer du Dock",
 };
 
-/// 0 = not chosen yet (follow Windows), 1 = Spanish, 2 = English, 3 = French.
+const ZH_TW: Strings = Strings {
+    keyboard_settings: "語言與鍵盤設定…",
+    keyboard: "鍵盤",
+    shell_operation_failed: "無法開始此操作，請稍後再試一次。",
+    open: "開啟(&O)",
+    new_window: "開新視窗(&N)",
+    keep_in_dock: "保留在 Dock(&K)",
+    show_in_explorer: "在檔案總管中顯示(&E)",
+    quit_app: "結束(&Q)",
+    end_task: "結束工作(&E)",
+    end_task_failed: "無法結束工作。該應用程式可能已經變更，或需要更高的權限。請重新開啟它的選單，或使用工作管理員（Ctrl+Shift+Esc）。",
+    empty_bin: "清空資源回收筒(&E)",
+    turn_hiding_on: "開啟自動隱藏(&O)",
+    turn_hiding_off: "關閉自動隱藏(&O)",
+    quit_dock: "結束 Muelle(&M)",
+    start: "開始",
+    remove: "移除",
+    close_window: "關閉(&C)",
+    ungroup: "取消群組(&U)",
+    settings: "Muelle 設定(&S)…",
+    run_as_admin: "以系統管理員身分執行(&D)",
+    show_desktop: "顯示桌面(&D)",
+    task_manager: "工作管理員(&M)",
+    taskbar_settings: "工作列設定(&T)",
+    usage_title: "AI 用量",
+    usage_refresh: "重新整理",
+    usage_refreshing: "正在重新整理…",
+    usage_sign_in: "請在用戶端登入",
+    usage_opencode_connect: "在 OpenCode 中：/connect → Go 或 Zen",
+    usage_connection_help: "連線說明",
+    usage_zen_local: "Zen · 本機預估花費（30 天）",
+    usage_device_scope: "這部裝置 · 所有帳號 · 不是你的餘額",
+    usage_no_local: "無法取得本機花費",
+    usage_open_console: "在 OpenCode 查看餘額",
+    usage_unavailable: "無法使用",
+    usage_loading: "載入中…",
+    usage_stale: "尚未更新",
+    usage_resets: "重設於",
+    usage_updated: "更新於",
+    usage_used: "已使用",
+    media_title: "正在播放",
+    media_volume: "系統音量",
+    media_no_output: "沒有輸出裝置",
+    folder_empty: "（空白）",
+    folder_unavailable: "資料夾無法使用",
+    change_folder: "變更資料夾(&C)…",
+    remove_from_dock: "從 Dock 移除(&R)",
+};
+
+/// 0 = not chosen yet (follow Windows), 1 = Spanish, 2 = English, 3 = French,
+/// 4 = Traditional Chinese.
 static LANGUAGE: AtomicU8 = AtomicU8::new(0);
 
 pub fn set_language(language: Language) {
@@ -212,11 +262,13 @@ pub fn set_language(language: Language) {
         Language::Es => UiLanguage::Spanish,
         Language::En => UiLanguage::English,
         Language::Fr => UiLanguage::French,
+        Language::ZhTw => UiLanguage::TraditionalChinese,
     };
     let stored = match chosen {
         UiLanguage::Spanish => 1,
         UiLanguage::English => 2,
         UiLanguage::French => 3,
+        UiLanguage::TraditionalChinese => 4,
     };
     LANGUAGE.store(stored, Ordering::Relaxed);
 }
@@ -235,6 +287,7 @@ pub fn text() -> &'static Strings {
     match chosen_language() {
         1 => &ES,
         3 => &FR,
+        4 => &ZH_TW,
         _ => &EN,
     }
 }
@@ -245,6 +298,7 @@ pub fn language() -> Language {
     match chosen_language() {
         1 => Language::Es,
         3 => Language::Fr,
+        4 => Language::ZhTw,
         _ => Language::En,
     }
 }

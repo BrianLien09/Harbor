@@ -256,6 +256,7 @@ pub enum UiLanguage {
     Spanish,
     English,
     French,
+    TraditionalChinese,
 }
 
 /// The Windows display language, or English when Muelle has no text in it.
@@ -265,6 +266,14 @@ pub fn ui_language() -> UiLanguage {
     const LANG_FRENCH: u16 = 0x0C;
     // SAFETY: Read-only query.
     let language = unsafe { windows::Win32::Globalization::GetUserDefaultUILanguage() };
+    // Chinese is told apart by the full language id: only Taiwan, Hong Kong and
+    // Macao use Traditional characters, so Simplified Chinese stays on English.
+    const LANGID_ZH_TW: u16 = 0x0404;
+    const LANGID_ZH_HK: u16 = 0x0C04;
+    const LANGID_ZH_MO: u16 = 0x1404;
+    if matches!(language, LANGID_ZH_TW | LANGID_ZH_HK | LANGID_ZH_MO) {
+        return UiLanguage::TraditionalChinese;
+    }
     match language & 0x3FF {
         LANG_SPANISH => UiLanguage::Spanish,
         LANG_FRENCH => UiLanguage::French,

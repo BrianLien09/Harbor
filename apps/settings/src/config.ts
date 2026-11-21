@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 
-export type Language = "auto" | "es" | "en" | "fr";
+export type Language = "auto" | "es" | "en" | "fr" | "zh-TW";
 export type IslandStyle = "notch" | "bubble";
 export type GenieSpeed = "normal" | "fast" | "faster";
 export type DockPosition = "left" | "bottom" | "right";

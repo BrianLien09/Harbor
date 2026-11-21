@@ -7,6 +7,7 @@
   Muelle replaces the Windows taskbar with a customizable dock and an optional
   macOS-style menu bar.
 
+  **English** · [Español](README.es.md) · [Français](README.fr.md) · [繁體中文](README.zh-TW.md)
 </div>
 
 <img width="1500" height="436" alt="Frame 1116606780" src="https://github.com/user-attachments/assets/3c91b488-214d-453d-a8c2-a9e0dc7f245e" />
@@ -45,7 +46,7 @@ Smooth magnification, live window previews, and an optional Genie-style minimize
 - A curved island in the menu bar for usage limits from Claude Code, Codex,
   OpenCode Go, Gemini CLI, and Antigravity. Gemini Pro
   and Flash quotas appear separately when available.
-- Separate Settings app with live changes, Spanish, English and French, and a
+- Separate Settings app with live changes, Spanish, English, French and Traditional Chinese, and a
   configurable Genie-style minimize animation.
 - A watchdog restores the Windows taskbar if the dock exits unexpectedly.
 

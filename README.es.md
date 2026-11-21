@@ -6,7 +6,7 @@
 
   Ampliación suave, miniaturas de ventanas en vivo y un efecto genio opcional al minimizar.
 
-  [English](README.md) · **Español** · [Français](README.fr.md)
+  [English](README.md) · **Español** · [Français](README.fr.md) · [繁體中文](README.zh-TW.md)
 </div>
 
 Muelle sustituye la barra de tareas de Windows por un dock personalizable y una

@@ -178,6 +178,10 @@ pub enum Language {
     Es,
     En,
     Fr,
+    /// Traditional Chinese (Taiwan). Renamed explicitly because the enum's
+    /// lowercase rule would otherwise write it as `zhtw`.
+    #[serde(rename = "zh-TW")]
+    ZhTw,
     /// Follow the Windows display language. Also what a language added by a
     /// newer version reads as, so the file stays valid for older versions
     /// (serde requires this fallback to be the last variant).
@@ -567,6 +571,15 @@ mod tests {
         fs::write(&path, r#"{"language":"fr"}"#).ok();
         let config = load(&path).ok().flatten().unwrap_or_default();
         assert_eq!(config.language, Language::Fr);
+    }
+
+    #[test]
+    fn load_should_read_traditional_chinese() {
+        let path = scratch("traditional-chinese");
+        save(&path, &Config::default()).ok();
+        fs::write(&path, r#"{"language":"zh-TW"}"#).ok();
+        let config = load(&path).ok().flatten().unwrap_or_default();
+        assert_eq!(config.language, Language::ZhTw);
     }
 
     #[test]
