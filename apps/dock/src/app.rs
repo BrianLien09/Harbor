@@ -2025,7 +2025,9 @@ impl App {
         use windows::Win32::UI::WindowsAndMessaging::{
             GA_ROOT, GetAncestor, HTMINBUTTON, SMTO_ABORTIFHUNG, SendMessageTimeoutW, WM_NCHITTEST,
         };
-        if self.fullscreen {
+        // 神燈關閉（或 Windows 動畫關閉）時用不到這個訊號：提前返回，
+        // 免得每次按下滑鼠都白做一次跨程序的 WM_NCHITTEST 詢問。
+        if self.fullscreen || !self.config.genie || !animations_enabled() {
             return Ok(());
         }
         // SAFETY: Read-only window query.
