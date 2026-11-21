@@ -1,9 +1,15 @@
+# 建置輸出
 /target
 node_modules/
 dist/
-# configuración local de cargo (ruta de compilación fuera de OneDrive)
+
+# 本機 cargo 設定（編譯路徑放在 OneDrive 之外）
 /.cargo/config.toml
+
+# 記錄檔與 Python 快取
 *.log
+__pycache__/
+*.pyc
+
+# 本機草稿與範例
 ejemplos/**
-plan.md
-FIRMA-DE-CODIGO.md
