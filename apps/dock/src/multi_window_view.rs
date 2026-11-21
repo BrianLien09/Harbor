@@ -47,6 +47,8 @@ const CARD_HEIGHT: f32 = 164.0;
 const HEADER: f32 = 24.0;
 const ARC: f32 = 16.0;
 const OPEN_SECONDS: f32 = 0.2;
+/// 指標輪詢（高亮、離開關閉）的間隔。
+const HOVER_POLL_MS: u32 = 60;
 const LEAVE_DELAY: Duration = Duration::from_millis(220);
 
 /// Pure layout shared by rendering and hit testing, including negative-origin
@@ -173,6 +175,8 @@ pub struct MultiWindowView {
     cards: Vec<Card>,
     opened: Instant,
     animated: bool,
+    /// 展開動畫已畫到最後一格；畫完之前由 dock 主迴圈每幀推進（見 `step`）。
+    settled: bool,
     left_at: Option<Instant>,
     pressed: Option<usize>,
     mouse_was_down: bool,
@@ -237,6 +241,7 @@ impl MultiWindowView {
             cards: Vec::new(),
             opened: Instant::now(),
             animated: animations_enabled(),
+            settled: false,
             left_at: None,
             pressed: None,
             mouse_was_down: false,
@@ -272,7 +277,7 @@ impl MultiWindowView {
                 bounds.bottom - bounds.top,
                 SWP_NOACTIVATE | SWP_SHOWWINDOW,
             )?;
-            SetTimer(Some(hwnd), TIMER, 16, None);
+            SetTimer(Some(hwnd), TIMER, HOVER_POLL_MS, None);
         }
         view.update()?;
         Ok(view)
@@ -414,7 +419,21 @@ impl MultiWindowView {
             target.SetRoot(&root)?;
         }
         self.opened = Instant::now();
+        self.settled = false;
         Ok(())
+    }
+
+    /// 展開動畫還沒畫完。DWM 縮圖得由 CPU 逐格移動，不能交給合成器，
+    /// 所以讓 dock 的主迴圈在這段期間跟著螢幕更新率（DwmFlush）呼叫 `step`，
+    /// 取代原本 16ms 的 Win32 計時器：計時器精度約 15.6ms、優先權又低，
+    /// 間隔忽長忽短，高更新率螢幕上看得出頓。
+    pub fn is_opening(&self) -> bool {
+        !self.settled
+    }
+
+    /// 推進一格展開動畫。
+    pub fn step(&mut self) -> Result<()> {
+        self.update()
     }
 
     fn update(&mut self) -> Result<()> {
@@ -461,15 +480,12 @@ impl MultiWindowView {
                 );
             }
         }
-        // Run quickly only during the opening view animation. Nothing is polled
-        // when the popup is closed, and thumbnail pixels are maintained by DWM.
+        self.settled = progress >= 1.0;
+        // 計時器只負責指標輪詢（高亮、離開關閉）；動畫格由 dock 主迴圈推進。
+        // Nothing is polled when the popup is closed, and thumbnail pixels are
+        // maintained by DWM.
         unsafe {
-            SetTimer(
-                Some(self.hwnd),
-                TIMER,
-                if progress < 1.0 { 16 } else { 60 },
-                None,
-            );
+            SetTimer(Some(self.hwnd), TIMER, HOVER_POLL_MS, None);
         }
         Ok(())
     }

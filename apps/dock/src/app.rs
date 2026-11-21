@@ -2165,6 +2165,10 @@ impl App {
         }
 
         self.cursor = along;
+        // 動畫進行中由主迴圈每幀的 `tick` 畫一次就好。高回報率滑鼠一幀內會送好幾個
+        // WM_MOUSEMOVE，每個都 render 只是重算後被下一次覆蓋，白白搶走這一幀的時間。
+        // 要在下面改動畫目標之前判斷：從靜止進入 hover 時主迴圈還在睡，必須自己畫。
+        let animating = self.is_animating();
         if !self.hovering {
             self.hovering = true;
             self.amount.target = 1.0;
@@ -2180,6 +2184,9 @@ impl App {
         // the mouse cancels the request, and without it the dock would
         // never hear the pointer leave and stay magnified.
         self.track_leave()?;
+        if animating {
+            return Ok(());
+        }
         self.render()?;
         self.aim_preview();
         Ok(())
@@ -4304,7 +4311,18 @@ impl App {
             let until = bounce.until.unwrap_or(LAUNCH_BOUNCE_LIMIT);
             elapsed < until
         });
+        if let Some(view) = &mut self.preview
+            && view.is_opening()
+        {
+            view.step()?;
+        }
+        let hovered = self.hovered;
         self.render()?;
+        // 動畫中滑鼠移動不自己 render（見 `on_mouse_move`），
+        // 改由這裡在指到的圖示換了時，更新多視窗預覽的目標。
+        if self.hovered != hovered {
+            self.aim_preview();
+        }
         Ok(restore.map(|hwnd| Outside::Activate(vec![hwnd])))
     }
 
@@ -4747,6 +4765,10 @@ impl App {
                 .is_some_and(|stage| stage.reorder.is_some())
             || !self.bounces.is_empty()
             || !self.flights.is_empty()
+            || self
+                .preview
+                .as_ref()
+                .is_some_and(MultiWindowView::is_opening)
     }
 }
 

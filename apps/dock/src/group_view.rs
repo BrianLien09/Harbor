@@ -4,16 +4,17 @@
 //! it as its own dock icon would; dragging one away takes it out of the
 //! group, and the dock carries on with the drag (see `App::start_group_drag`).
 
-use std::time::Instant;
 
 use anyhow::Result;
 use harbor_core::frame::DockEdge;
 use harbor_shell::{system::animations_enabled, tracker};
 use windows::{
+    Foundation::TimeSpan,
     UI::{
         Color,
         Composition::{
-            CompositionSurfaceBrush, ContainerVisual, Desktop::DesktopWindowTarget, SpriteVisual,
+            CompositionEasingFunction, CompositionSurfaceBrush, ContainerVisual,
+            Desktop::DesktopWindowTarget, SpriteVisual,
         },
     },
     Win32::{
@@ -36,7 +37,7 @@ use windows::{
             },
         },
     },
-    core::{BOOL, Interface, w},
+    core::{BOOL, Interface, h, w},
 };
 use windows_numerics::{Vector2, Vector3};
 
@@ -74,6 +75,8 @@ const GLOW: f32 = 6.0;
 const OPEN_SECONDS: f32 = 0.22;
 /// Each app sets off a little after the one below it.
 const STAGGER_SECONDS: f32 = 0.025;
+/// 展開後輪詢指標（高亮、點外面關閉）的間隔。
+const HOVER_POLL_MS: u32 = 50;
 
 /// One app of the group, as the dock knows it.
 pub struct GroupItem {
@@ -348,8 +351,6 @@ pub struct GroupView {
     edge: DockEdge,
     scale: f32,
     theme: Theme,
-    opened: Instant,
-    animated: bool,
     /// The app pressed, and where the pointer was on screen.
     pressed: Option<(usize, POINT)>,
     mouse_was_down: bool,
@@ -412,8 +413,6 @@ impl GroupView {
             edge: place.edge,
             scale: place.scale,
             theme: place.theme,
-            opened: Instant::now(),
-            animated: animations_enabled(),
             pressed: None,
             mouse_was_down: false,
             foreground: tracker::foreground_window(),
@@ -449,10 +448,76 @@ impl GroupView {
                 bounds.bottom - bounds.top,
                 SWP_NOACTIVATE | SWP_SHOWWINDOW,
             )?;
-            SetTimer(Some(hwnd), TIMER, 16, None);
+            SetTimer(Some(hwnd), TIMER, HOVER_POLL_MS, None);
         }
+        view.unfold(gfx, animations_enabled())?;
         view.update()?;
         Ok(view)
+    }
+
+    /// 展開動畫交給合成器：它跟著螢幕更新率走，不受 Win32 計時器約 15.6ms
+    /// 精度與訊息排程影響，高更新率螢幕也不會一頓一頓。每個 app 一組動畫，
+    /// 依序錯開開始時間；播完合成器就放掉，不留常駐物件。
+    fn unfold(&self, gfx: &Gfx, animated: bool) -> Result<()> {
+        let c = &gfx.compositor;
+        let start = (
+            ((self.anchor.left + self.anchor.right) / 2 - self.layout.bounds.left) as f32,
+            (self.anchor.top - self.layout.bounds.top) as f32,
+        );
+        // 原本逐格算的 1 - (1 - t)^3（ease-out cubic）的貝茲近似。
+        let ease: CompositionEasingFunction = c
+            .CreateCubicBezierEasingFunction(Vector2 { X: 0.33, Y: 1.0 }, Vector2 { X: 0.68, Y: 1.0 })?
+            .cast()?;
+        let seconds = |value: f32| TimeSpan {
+            Duration: (value * 1e7) as i64,
+        };
+        for (index, (visual, icon)) in self.visuals.iter().zip(&self.layout.icons).enumerate() {
+            let side = (icon.right - icon.left) as f32;
+            let (left, top) = (icon.left as f32, icon.top as f32);
+            if !animated {
+                visual.root.SetOffset(v3(left, top))?;
+                visual.root.SetOpacity(1.0)?;
+                continue;
+            }
+            // The fan comes out of the group's icon; the grid comes a little
+            // way out of the dock.
+            let rise = 24.0 * self.scale;
+            let (from_x, from_y) = if self.layout.fan {
+                (start.0 - side / 2.0, start.1 - side)
+            } else {
+                match self.edge {
+                    DockEdge::Bottom => (left, top + rise),
+                    DockEdge::Left => (left - rise, top),
+                    DockEdge::Right => (left + rise, top),
+                }
+            };
+            // 等待錯開的那段時間停在起點、完全透明。
+            visual.root.SetOffset(v3(from_x, from_y))?;
+            visual.root.SetOpacity(0.0)?;
+            let delay = seconds(index as f32 * STAGGER_SECONDS);
+            let offset = c.CreateVector3KeyFrameAnimation()?;
+            offset.InsertKeyFrameWithEasingFunction(1.0, v3(left, top), &ease)?;
+            offset.SetDuration(seconds(OPEN_SECONDS))?;
+            offset.SetDelayTime(delay)?;
+            visual.root.StartAnimation(h!("Offset"), &offset)?;
+            let opacity = c.CreateScalarKeyFrameAnimation()?;
+            opacity.InsertKeyFrameWithEasingFunction(1.0, 1.0, &ease)?;
+            opacity.SetDuration(seconds(OPEN_SECONDS))?;
+            opacity.SetDelayTime(delay)?;
+            visual.root.StartAnimation(h!("Opacity"), &opacity)?;
+        }
+        if let Some(panel) = &self.panel {
+            if animated {
+                panel.SetOpacity(0.0)?;
+                let opacity = c.CreateScalarKeyFrameAnimation()?;
+                opacity.InsertKeyFrameWithEasingFunction(1.0, 1.0, &ease)?;
+                opacity.SetDuration(seconds(OPEN_SECONDS))?;
+                panel.StartAnimation(h!("Opacity"), &opacity)?;
+            } else {
+                panel.SetOpacity(1.0)?;
+            }
+        }
+        Ok(())
     }
 
     /// The group's apps as they were when it opened.
@@ -603,66 +668,26 @@ impl GroupView {
         Ok(())
     }
 
-    /// Moves the apps along their opening animation and lights the one
-    /// under the pointer.
+    /// Lights the app under the pointer. The opening animation runs on the
+    /// compositor (see `unfold`).
     pub fn update(&mut self) -> Result<()> {
-        let elapsed = self.opened.elapsed().as_secs_f32();
         let hovered = self.hit(self.local_cursor()?);
         let lit = self.pressed.map(|(index, _)| index).or(hovered);
-        let start = (
-            ((self.anchor.left + self.anchor.right) / 2 - self.layout.bounds.left) as f32,
-            (self.anchor.top - self.layout.bounds.top) as f32,
-        );
-        let mut moving = false;
-        for (index, (visual, icon)) in self.visuals.iter().zip(&self.layout.icons).enumerate() {
-            let progress = if self.animated {
-                ((elapsed - index as f32 * STAGGER_SECONDS) / OPEN_SECONDS).clamp(0.0, 1.0)
-            } else {
-                1.0
-            };
-            moving |= progress < 1.0;
-            let eased = 1.0 - (1.0 - progress).powi(3);
-            let side = (icon.right - icon.left) as f32;
-            let (left, top) = (icon.left as f32, icon.top as f32);
-            // The fan comes out of the group's icon; the grid comes a little
-            // way out of the dock.
-            let rise = 24.0 * self.scale;
-            let (from_x, from_y) = if self.layout.fan {
-                (start.0 - side / 2.0, start.1 - side)
-            } else {
-                match self.edge {
-                    DockEdge::Bottom => (left, top + rise),
-                    DockEdge::Left => (left - rise, top),
-                    DockEdge::Right => (left + rise, top),
-                }
-            };
-            visual.root.SetOffset(v3(
-                from_x + (left - from_x) * eased,
-                from_y + (top - from_y) * eased,
-            ))?;
-            visual.root.SetOpacity(eased)?;
+        for (index, visual) in self.visuals.iter().enumerate() {
             visual
                 .highlight
                 .SetOpacity(if lit == Some(index) { 1.0 } else { 0.0 })?;
         }
-        if let Some(panel) = &self.panel {
-            let progress = if self.animated {
-                (elapsed / OPEN_SECONDS).min(1.0)
-            } else {
-                1.0
-            };
-            panel.SetOpacity(1.0 - (1.0 - progress).powi(3))?;
-        }
-        // Quick while unfolding; then just often enough to follow the pointer.
+        // 按住時（可能要拖出群組）跟緊一點；平常只要跟得上指標的高亮。
         // SAFETY: Our own timer; setting it again replaces it.
         unsafe {
             SetTimer(
                 Some(self.hwnd),
                 TIMER,
-                if moving || self.pressed.is_some() {
+                if self.pressed.is_some() {
                     16
                 } else {
-                    50
+                    HOVER_POLL_MS
                 },
                 None,
             )

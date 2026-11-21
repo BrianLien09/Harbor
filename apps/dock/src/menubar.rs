@@ -424,6 +424,9 @@ pub struct MenuBar {
     pending_volume: Option<u8>,
     volume_target: Option<u8>,
     volume_controls: Option<VolumeControls>,
+    /// 時鐘的 visual 與它的寬度：只有時鐘變了（每分鐘一次）時直接換它的圖，
+    /// 不重建整條選單列。
+    clock_visual: Option<(SpriteVisual, f32)>,
     suppress_volume_release: bool,
     panel: Option<Island>,
     visual_height: i32,
@@ -1159,6 +1162,7 @@ impl MenuBar {
             pending_volume: None,
             volume_target: None,
             volume_controls: None,
+            clock_visual: None,
             suppress_volume_release: false,
             panel: None,
             visual_height: 0,
@@ -1911,6 +1915,10 @@ impl MenuBar {
         if self.look.as_ref() == Some(&look) {
             return Ok(());
         }
+        if self.swap_clock(gfx, &look)? {
+            self.look = Some(look);
+            return Ok(());
+        }
         let moment = self
             .look
             .as_ref()
@@ -1923,6 +1931,33 @@ impl MenuBar {
             self.cue = Some((act, x));
         }
         Ok(())
+    }
+
+    /// 只有時鐘文字變了、而且新文字一樣寬時，只換時鐘的圖。
+    ///
+    /// 其他項目由右往左依時鐘寬度排列，寬度一變（例如 9:59 → 10:00、跨日）
+    /// 就得整條重排，回傳 `false` 交給 `build`。Segoe UI 的數字等寬，所以
+    /// 一般的跳分鐘都走這條快路：一個文字 surface，而不是二、三十個。
+    fn swap_clock(&self, gfx: &Gfx, look: &Look) -> Result<bool> {
+        let (Some(old), Some((visual, width))) = (&self.look, &self.clock_visual) else {
+            return Ok(false);
+        };
+        if old.clock == look.clock {
+            return Ok(false);
+        }
+        // 把舊時鐘套進新的 Look 比較，其餘欄位必須完全相同。
+        let mut probe = look.clone();
+        probe.clock.clone_from(&old.clock);
+        if probe != *old {
+            return Ok(false);
+        }
+        let ink = if look.light { Ink::Dark } else { Ink::Light };
+        let label = gfx.text_brush(&look.clock, look.scale, false, ink)?;
+        if (label.width - width).abs() > 0.5 {
+            return Ok(false);
+        }
+        visual.SetBrush(&label.brush)?;
+        Ok(true)
     }
 
     /// A moment worth the crab, found by the last update: the act and the
@@ -2145,7 +2180,10 @@ impl MenuBar {
                 right -= px(6.0);
             }
             let left = right - item.width;
-            place(&layers, item, left)?;
+            let visual = place(&layers, item, left)?;
+            if *action == Action::Notifications {
+                self.clock_visual = Some((visual, item.width));
+            }
             // The battery icon and its percentage form one control.
             // Accessory readings are passive status indicators, not controls.
             if *action != Action::AccessoryIndicator {
