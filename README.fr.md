@@ -7,7 +7,7 @@
   Harbor remplace la barre des tâches de Windows par un dock personnalisable et
   une barre de menus facultative à la manière de macOS.
 
-  [English](README.md) · [Español](README.es.md) · **Français** · [繁體中文](README.zh-TW.md)
+  [English](README.en.md) · [Español](README.es.md) · **Français** · [繁體中文](README.md)
 </div>
 
 <img width="1500" height="436" alt="Le dock et la barre de menus de Harbor" src="https://github.com/user-attachments/assets/3c91b488-214d-453d-a8c2-a9e0dc7f245e" />
@@ -76,8 +76,7 @@ une version dans les [Releases](https://github.com/BrianLien09/Harbor/releases).
    droits d'administrateur, sans assistant, en deux secondes environ.
 2. Harbor est récent : SmartScreen peut ne pas encore le reconnaître et
    indiquer qu'il a protégé votre ordinateur. Choisissez **Informations
-   complémentaires → Exécuter quand même**. Voir la
-   [politique de signature du code](https://brianlien09.github.io/Harbor/code-signing-policy).
+   complémentaires → Exécuter quand même**.
 3. Ouvrez **Harbor** depuis le menu Démarrer, puis choisissez **Dock** pour
    personnaliser le dock et la barre de menus.
 

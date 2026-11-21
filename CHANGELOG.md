@@ -1,191 +1,44 @@
-# Changelog / Cambios
+# 更新紀錄
 
-Each release lists its changes in English and in Spanish. The release workflow
-copies the section of the version being published into the GitHub release.
-
-Cada versión lista sus cambios en inglés y en español. El flujo de publicación
-copia la sección de la versión que se publica a la release de GitHub.
+從 0.1.18 起，每個版本的更新內容以繁體中文撰寫。發布流程會把該版本的段落
+（`## [版本]` 到下一個 `## [` 之間）原樣複製成 GitHub Release 的說明。
+0.1.17 以前的段落沿用原專案的英文與西班牙文。
 
 ## [Unreleased]
 
 ## [0.1.18]
 
-### English
+### Harbor 專屬
 
-- Music now shows circular Windows media artwork in the island and its popup,
-  with a bundled offline fallback. The popup adds system volume and mute controls;
-  the thumb and percentage respond immediately, with coalesced audio writes and
-  retained visuals. Audio events avoid unrelated system queries and full redraws
-  for percentage-only changes. Release/cancellation does not steal app focus.
-- Dock and island-style previews use the current monitor's wallpaper when available.
-  Notch/bubble illustrations have clearer content and unobstructed selection marks. Nested
-  options and sliders have fewer icons, and the GitHub star is filled yellow.
-- Settings now illustrate Dock placement, island styles and Genie speeds, with
-  native keyboard-selectable options, clearer icons and shorter descriptions.
-  A permanent sidebar link opens Muelle on GitHub to explore and star the project.
-- Settings → Dock → Position on screen: Left, Bottom or Right, as on macOS.
-  Bottom stays the default. On a side the dock runs top to bottom below the
-  menu bar, icons grow and show their names inward, menus, groups and window
-  previews open beside the icon, the genie flies sideways into the dock, a
-  hidden dock comes out of its side edge (on any display), and maximized
-  windows end beside it. No top position: that edge belongs to the menu bar.
-- Separated manual SignPath test builds from public releases and updater output.
-  Signature verification now records Windows' detailed result and the file hash,
-  checks the expected signer, and keeps strict integrity checks in both modes.
-  Test-certificate trust is temporary and restricted to GitHub-hosted runners.
-- Settings → Menu bar → Show what's playing (issue #28). The music half of
-  the island could not be turned off; now it can, and with AI usage off too
-  the menu bar shows no island at all. Off, Muelle also stops following media
-  sessions. On by default, as before.
-- Added "End task" beside "Quit" in a running app's context menu, including apps
-  inside dock groups (issue #26). Force termination runs outside the UI thread
-  against process handles captured for that menu. Explorer, critical/shared hosts
-  and inaccessible processes are excluded; cancelling the menu changes nothing.
-- Hardened "End task" against windows closed or added while its menu is open,
-  including independent windows outside the dock's current desktop. All selected
-  processes are checked before termination; an outdated selection is refused
-  instead of ending a background process or partially applying the request.
-- Settings → Windows → Genie speed (issue #27): Normal, Fast or Faster.
-  Normal is the speed the genie always had (0.5 s, close to the macOS Dock)
-  and stays the default; Fast takes 0.35 s and Faster 0.25 s, minimizing and
-  restoring alike. The change applies to the next window at once.
-- Added a persistent red attention badge for apps that request attention through
-  Windows, including grouped apps and minimized-window thumbnails (issue #22,
-  first stage). It clears on window activation/closure and follows Windows' badge
-  preference live. Updates reuse visuals without rebuilding the dock, additional
-  polling, notification-content access, or invented unread-message counts.
-- Fixed (issue #25): an uninstalled app could stay in Recent Apps with no way
-  to remove it. Recent apps that no longer exist now leave the dock on their
-  own, as pinned ones already did, and clicking one that was just uninstalled
-  removes it instead of failing. A recent app's menu also has "Remove from
-  Dock", to dismiss it while recent apps stay on; it comes back the next time
-  you open and close it.
-- Fixed: a Logitech mouse on a receiver (reported with a G305 on its LIGHTSPEED
-  receiver) did not show its battery in the menu bar, or showed it only for a
-  moment. The mouse sleeps a few seconds after it stops moving and then does not
-  answer, and every check dropped it. A device behind a receiver now keeps its
-  last reading for 30 minutes while it sleeps, as Logitech's own tools do, and
-  each request waits longer for a reply over the radio. Unplugging the
-  receiver still removes it at once.
-- OpenCode now distinguishes Go quotas from Zen's estimated cost on this device
-  over the last 30 days. Both appear in one theme-aware card; Go also shows its
-  monthly window. Zen opens the official Console for the real account balance,
-  which is not exposed by its public API. Local history is read only, bounded,
-  and refreshed by the existing worker without extra background polling.
-- Fixed OpenCode Go account discovery: read its `opencode-go` credential, respect
-  `XDG_DATA_HOME`, and fall back from an empty environment key to the saved login.
-  The usage card now identifies Go explicitly and provides a working connection
-  guide button instead of an inert sign-in instruction.
-- Fixed a blocking "Ordinal 381 Not Found" system dialog when launching applications
-  with Uninstall Tool (`utshellext.dll`) or other third-party shell extensions installed
-  (issue #23). `muelle.exe` now embeds an application manifest declaring a dependency on
-  `Microsoft.Windows.Common-Controls` 6.0.0.0 (along with PerMonitorV2 DPI awareness and
-  Windows 10/11 compatibility), enabling shell extensions to resolve modern ComCtl32 exports
-  such as `LoadIconWithScaleDown`.
-- Process-level error mode now suppresses critical-error and file-not-found system message
-  boxes (`SEM_FAILCRITICALERRORS | SEM_NOOPENFILEERRORBOX`) across the dock, the one-shot
-  shell worker, and application launch, and `ShellExecuteExW` requests `SEE_MASK_FLAG_NO_UI`.
-  Faulty or incompatible shell extensions no longer block or delay application opening;
-  mandatory UAC elevation prompts remain visible.
-- WinGet manifests now use `/S` for both unattended modes and declare the
-  Visual C++ x64 and WebView2 runtime dependencies. This addresses first-install
-  UI and missing-runtime risks; Microsoft installation revalidation is pending.
-- Genie minimize no longer flashes the desktop for a frame or pauses before
-  flying: the stand-in is prepared in advance and placed behind the window as
-  the minimize button is pressed, and only the screen copy delays the flight.
-  Restoring from the dock no longer falls back to the Windows animation, and up
-  to eight minimized windows keep their genie snapshot.
+- 專案改名為 Harbor，改用自己的 GitHub 倉庫發布；app 內自動更新也改從這裡下載新版。
+- 新增繁體中文介面，Dock、選單列與設定都有中文；README 預設改為繁體中文。
+- 頂部選單列可顯示系統匣（通知區域）的釘選圖示，再按一次圖示即可收起選單。
+- 神燈最小化不再先閃一下桌面、也不會停頓才起飛：替身畫面事先備好，按下最小化鈕
+  時就擺到視窗後方，起飛只等擷取畫面（約 0.1 秒）。從 Dock 還原不會再冒出 Windows
+  原生動畫，同時最小化的視窗最多 8 個都保有神燈還原效果。
 
-### Español
+### 新功能
 
-- La isla y el popup de música muestran la carátula circular de Windows, con
-  una imagen incluida como respaldo. El popup incorpora volumen del sistema y
-  silencio: tirador y porcentaje responden al instante, reutilizando sus visuales
-  y agrupando las escrituras de audio. Los cambios de porcentaje evitan consultas
-  ajenas al audio y redibujar la barra. El arrastre no roba el foco.
-- Las previews del Dock y de estilos de isla usan el fondo del monitor actual.
-  Muesca y burbuja tienen contenido más claro y la marca de selección queda fuera
-  de la imagen. Si el fondo no está disponible, mantienen el fondo ilustrado.
-  Se quitan iconos de subopciones y sliders; la estrella de GitHub es amarilla.
-- Ajustes incorpora vistas de la posición del Dock, los estilos de isla y la
-  velocidad del genio, con selección por teclado, iconos y textos más breves.
-  Un enlace fijo al pie del sidebar abre Muelle en GitHub para conocer y apoyar
-  el proyecto con una estrella.
-- Ajustes → Dock → Posición en la pantalla: Izquierda, Abajo o Derecha, como
-  en macOS. Abajo sigue siendo la predeterminada. En un lateral el dock va de
-  arriba abajo bajo la barra superior, los iconos crecen y muestran su nombre
-  hacia dentro, los menús, grupos y vistas previas se abren junto al icono, el
-  genio vuela de lado hacia el dock, el dock oculto sale por su borde lateral
-  (en cualquier pantalla) y las ventanas maximizadas terminan a su lado. No hay
-  posición arriba: ese borde es de la barra superior.
-- Separadas las pruebas manuales de SignPath de las releases y el actualizador.
-  La verificación registra el detalle de Windows y el hash, comprueba el firmante
-  previsto y exige firmas válidas en ambos modos. La confianza del certificado
-  de prueba es temporal y se limita a runners alojados de GitHub.
-- Ajustes → Barra superior → Mostrar lo que se reproduce (issue #28). La parte
-  de música de la isla no se podía apagar; ahora sí, y si también desactivas el
-  uso de IA la barra superior no muestra ninguna isla. Apagado, Muelle deja
-  además de seguir las sesiones multimedia. Activado por defecto, como antes.
-- Añadido «Finalizar tarea» junto a «Salir» en el menú de una app abierta, también
-  dentro de grupos del dock (issue #26). La finalización forzada se ejecuta fuera
-  del hilo de interfaz y usa los procesos capturados para ese menú. Se excluyen
-  Explorer, procesos críticos/hosts compartidos y procesos sin permisos; cancelar
-  el menú no realiza ninguna acción.
-- Reforzado «Finalizar tarea» si se cierran o aparecen ventanas mientras el menú
-  sigue abierto, también fuera del escritorio que muestra el dock. Se comprueban
-  todos los procesos antes de finalizar: una selección antigua se rechaza en vez
-  de terminar un proceso en segundo plano o aplicar parcialmente la petición.
-- Ajustes → Ventanas → Velocidad del genio (issue #27): Normal, Rápida o Muy
-  rápida. Normal es la velocidad de siempre (0,5 s, cercana al Dock de macOS)
-  y sigue siendo la predeterminada; Rápida dura 0,35 s y Muy rápida 0,25 s,
-  tanto al minimizar como al restaurar. Se aplica al instante a la siguiente
-  ventana.
-- Añadido un badge rojo persistente para las apps que solicitan atención mediante
-  Windows, también en grupos y miniaturas minimizadas (issue #22, primera etapa).
-  Se quita al activar/cerrar la ventana y sigue en caliente la preferencia de
-  badges de Windows. Se reutilizan los visuales sin reconstruir el dock, sin
-  sondeos adicionales, sin leer mensajes y sin inventar contadores de no leídos.
-- Corregido (issue #25): una app desinstalada podía quedarse en Apps recientes
-  sin forma de quitarla. Las apps recientes que ya no existen salen solas del
-  dock, como ya pasaba con las fijadas, y al hacer clic en una recién
-  desinstalada se quita en vez de fallar. El menú de una app reciente tiene
-  además «Quitar del Dock» para descartarla sin desactivar las recientes;
-  vuelve la próxima vez que la abras y la cierres.
-- Corregido: un ratón Logitech con receptor (reportado con un G305 y su receptor
-  LIGHTSPEED) no mostraba su batería en la barra superior, o solo un momento. El
-  ratón se duerme a los pocos segundos de no moverlo y entonces no responde, y
-  cada comprobación lo quitaba. Un dispositivo tras receptor conserva ahora su
-  última lectura 30 minutos mientras duerme, como las herramientas de Logitech, y
-  cada petición espera más la respuesta por radio. Quitar el
-  receptor lo sigue borrando al instante.
-- Corregido un diálogo de error bloqueante ("No se encuentra el ordinal 381") al abrir
-  aplicaciones con Uninstall Tool (`utshellext.dll`) u otras extensiones del shell de
-  terceros instaladas (issue #23). `muelle.exe` ahora incrusta un manifiesto de aplicación
-  que declara la dependencia de `Microsoft.Windows.Common-Controls` 6.0.0.0 (junto con
-  reconocimiento DPI PerMonitorV2 y compatibilidad con Windows 10/11), permitiendo a las
-  extensiones resolver funciones modernas de ComCtl32 como `LoadIconWithScaleDown`.
-- El modo de error del proceso ahora suprime los cuadros de diálogo de errores críticos
-  del sistema (`SEM_FAILCRITICALERRORS | SEM_NOOPENFILEERRORBOX`) en el dock, el proceso
-  auxiliar del shell y el lanzador, y `ShellExecuteExW` usa `SEE_MASK_FLAG_NO_UI`. Las
-  extensiones del shell defectuosas o incompatibles ya no bloquean ni retrasan la apertura
-  de aplicaciones; las solicitudes de elevación UAC se mantienen visibles.
-- Corregida la detección de cuentas OpenCode Go: se lee la credencial `opencode-go`,
-  se respeta `XDG_DATA_HOME` y una variable de clave vacía permite usar la sesión
-  guardada. La tarjeta identifica Go e incluye un botón funcional con instrucciones
-  de conexión, en lugar de un texto de inicio de sesión sin acción.
-- OpenCode distingue las cuotas de Go del gasto estimado de Zen en este equipo
-  durante los últimos 30 días, en una misma tarjeta que respeta el tema. Go muestra
-  también su ventana mensual. Zen permite abrir la consola oficial para consultar
-  el saldo real, que no expone su API pública. El historial se lee sin modificarlo,
-  con límites de trabajo y usando el worker e intervalo existentes.
-- Los manifiestos de WinGet usan `/S` en ambos modos desatendidos y declaran
-  las dependencias de Visual C++ x64 y WebView2. Se corrigen riesgos de interfaz
-  en la primera instalación y de runtimes ausentes; falta revalidar con Microsoft.
-- El minimizado con efecto genio ya no muestra el escritorio un instante ni se
-  detiene antes de volar: el sustituto se prepara de antemano y se coloca detrás
-  de la ventana al pulsar minimizar, y solo la copia de pantalla retrasa el vuelo.
-  Restaurar desde el dock ya no cae en la animación de Windows, y hasta ocho
-  ventanas minimizadas conservan su captura para el genio.
+- 設定 → Dock → 螢幕位置：可選左側、下方或右側（預設下方）。放在側邊時 Dock 由上往下
+  排列，選單、群組與視窗預覽會在圖示旁打開，神燈也會往側邊飛。
+- 設定 → 視窗 → 神燈速度：一般（0.5 秒）、快（0.35 秒）、更快（0.25 秒）。
+- 執行中 app 的右鍵選單新增「結束工作」，群組裡的 app 也有；會先確認選取的程序，
+  不會誤關 Explorer 等系統程序。
+- 需要注意的 app（Windows 要求注意時）會在圖示上顯示紅色提示點，切到該視窗或關閉後消失。
+- 設定 → 選單列 → 顯示正在播放：可以關掉島狀區塊的音樂部分。
+- 音樂島與彈出視窗顯示圓形專輯封面，彈出視窗新增系統音量與靜音控制。
+- 選單列新增精簡的泡泡樣式（音樂與 AI 用量）、省電模式電池提示、Wi-Fi 警示與藍牙小工具。
+- 設定頁加上 Dock 位置、島狀樣式與神燈速度的示意圖，預覽會使用目前螢幕的桌布。
+- OpenCode 用量卡片分開顯示 Go 額度與 Zen 近 30 天預估花費。
+
+### 修正
+
+- 已解除安裝的 app 不會再卡在「最近使用」；最近使用的 app 右鍵也能「從 Dock 移除」。
+- 接收器連線的 Logitech 滑鼠（例如 G305）休眠時，選單列仍會保留最後的電量。
+- 修正 OpenCode Go 帳號偵測失敗。
+- 安裝某些第三方檔案總管擴充（例如 Uninstall Tool）時，開 app 不會再跳出
+  「Ordinal 381 Not Found」錯誤視窗。
+- 多螢幕時工作列隱藏更穩定，副螢幕的工作列不會閃出來。
 
 ## [0.1.17]
 

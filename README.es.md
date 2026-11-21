@@ -6,7 +6,7 @@
 
   Ampliación suave, miniaturas de ventanas en vivo y un efecto genio opcional al minimizar.
 
-  [English](README.md) · **Español** · [Français](README.fr.md) · [繁體中文](README.zh-TW.md)
+  [English](README.en.md) · **Español** · [Français](README.fr.md) · [繁體中文](README.md)
 </div>
 
 Harbor sustituye la barra de tareas de Windows por un dock personalizable y una
@@ -55,8 +55,7 @@ dibujar su animación; las devuelve al cerrarse.
 1. Ejecuta `Harbor-Setup.exe`. Se instala solo para tu usuario: sin permisos de
    administrador, sin asistente, en unos dos segundos.
 2. Harbor es nuevo, así que SmartScreen puede no reconocerlo todavía y decir que
-   protegió tu PC. Elige **Más información → Ejecutar de todas formas**. Ver la
-   [política de firma de código](https://brianlien09.github.io/Harbor/code-signing-policy).
+   protegió tu PC. Elige **Más información → Ejecutar de todas formas**.
 3. Aparece el dock y se oculta la barra de tareas de Windows. Desde entonces Harbor
    se abre al iniciar Windows; puedes desactivarlo en Ajustes → Sistema.
 
