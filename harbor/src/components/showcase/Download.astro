@@ -7,7 +7,6 @@ import Section from "@/components/layout/Section.astro";
 import Button from "@/components/ui/Button.astro";
 import Icon from "@/components/ui/Icon.astro";
 import { download } from "@/data/showcase";
-import { signingCredit } from "@/data/policies";
 import { site } from "@/data/site";
 import "@/styles/showcase.css";
 ---
@@ -48,8 +47,8 @@ import "@/styles/showcase.css";
     }
   </ol>
 
-  <p class="get-signing" data-r>
-    {signingCredit} <a href={withBase("/code-signing-policy")}>Code signing policy</a> · <a href={withBase("/privacy")}>Privacy</a>
+  <p class="get-legal" data-r>
+    <a href={withBase("/privacy")}>Privacy</a>
   </p>
 
   <details class="get-source" data-r>

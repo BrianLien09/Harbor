@@ -13,7 +13,6 @@ Harbor is not an Electron app: the dock is a native Win32 process that draws thr
 - [Reversible](https://brianlien09.github.io/Harbor/#safety): how the Windows taskbar comes back.
 - [Download](https://brianlien09.github.io/Harbor/#download): installer and build from source.
 - [Privacy policy](https://brianlien09.github.io/Harbor/privacy): what Harbor sends over the network and what stays on the PC.
-- [Code signing policy](https://brianlien09.github.io/Harbor/code-signing-policy): how releases are built and signed.
 
 ## Download
 

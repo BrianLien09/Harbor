@@ -36,7 +36,6 @@ export const footerGroups = [
       { label: "Changelog", href: withBase("/changelog"), external: false },
       { label: "About", href: withBase("/about"), external: false },
       { label: "Contribute", href: site.issues, external: true },
-      { label: "Code signing policy", href: withBase("/code-signing-policy"), external: false },
       { label: "Privacy", href: withBase("/privacy"), external: false },
     ],
   },
