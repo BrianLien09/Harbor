@@ -48,6 +48,24 @@ pub fn needs_visibility_repair() -> bool {
     taskbars().into_iter().any(|hwnd| !is_ghosted(hwnd))
 }
 
+/// 把被 Explorer 重設成可見的工作列再次隱形。
+///
+/// Win+B（顯示隱藏圖示、點系統匣釘選圖示）會讓 Explorer 展開自動隱藏的工作列，
+/// 並清掉我們設的透明樣式；不補回的話真正的工作列會一直留在畫面上，直到下次
+/// 剛好有人呼叫 `take_over`。這裡只動 `is_ghosted` 為否的視窗，每圈只有幾個
+/// 唯讀查詢，可以放在短迴圈裡一直呼叫。Harbor 沒接管工作列時（沒有狀態檔）
+/// 什麼都不做，免得把使用者原本的工作列藏起來。
+pub fn reapply_ghost() {
+    if !state_file().exists() {
+        return;
+    }
+    for hwnd in taskbars() {
+        if !is_ghosted(hwnd) {
+            set_ghost(hwnd, true);
+        }
+    }
+}
+
 fn take_over_taskbars(bars: &[HWND], file: &std::path::Path) -> bool {
     // A logon task can run before Explorer creates Shell_TrayWnd. Saving
     // an absent shell's state would lose the user's original preference.

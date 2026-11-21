@@ -22,10 +22,11 @@ use windows::{
             WindowsAndMessaging::{
                 ASFW_ANY, AllowSetForegroundWindow, FindWindowW, GWL_EXSTYLE, GetForegroundWindow,
                 GetWindowLongW, GetWindowRect, GetWindowThreadProcessId, IsIconic, IsWindow,
-                IsWindowVisible, PostMessageW, SMTO_ABORTIFHUNG, SW_MINIMIZE, SW_RESTORE,
-                SW_SHOWNORMAL, SWP_ASYNCWINDOWPOS, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOOWNERZORDER,
-                SWP_NOSIZE, SWP_NOZORDER, SendMessageTimeoutW, SetForegroundWindow, SetWindowPos,
-                ShowWindowAsync, SwitchToThisWindow, WM_CLOSE, WM_NULL, WS_EX_TOPMOST,
+                IsWindowVisible, PostMessageW, SC_MINIMIZE, SMTO_ABORTIFHUNG, SW_MINIMIZE,
+                SW_RESTORE, SW_SHOWNORMAL, SWP_ASYNCWINDOWPOS, SWP_NOACTIVATE, SWP_NOMOVE,
+                SWP_NOOWNERZORDER, SWP_NOSIZE, SWP_NOZORDER, SendMessageTimeoutW,
+                SetForegroundWindow, SetWindowPos, ShowWindowAsync, SwitchToThisWindow, WM_CLOSE,
+                WM_NULL, WM_SYSCOMMAND, WS_EX_TOPMOST,
             },
         },
     },
@@ -240,6 +241,12 @@ const HIDDEN_ICONS_DELAY: Duration = Duration::from_millis(250);
 const HIDDEN_ICONS_HOLD: Duration = Duration::from_millis(1200);
 /// Space between the menu bar and the flyout, in physical pixels.
 const HIDDEN_ICONS_GAP: i32 = 6;
+/// 補回工作列隱形樣式的檢查間隔。
+const TASKBAR_GUARD_STEP: Duration = Duration::from_millis(10);
+/// 面板收起（或點系統匣圖示）後，繼續守著工作列的時間。
+const TASKBAR_SETTLE: Duration = Duration::from_millis(1500);
+/// 面板最久守多久：使用者把它開著不管時，不讓這條執行緒一直跑下去。
+const HIDDEN_ICONS_MAX_OPEN: Duration = Duration::from_secs(120);
 /// The hidden-icons flyout: Windows 11, then Windows 10.
 const OVERFLOW_CLASSES: [PCWSTR; 2] = [
     w!("TopLevelWindowForOverflowXamlIsland"),
@@ -280,14 +287,32 @@ pub fn toggle_hidden_icons(anchor: (i32, i32)) {
     tap(&[VK_LWIN, VK_B]);
     // The rest waits on its own short-lived thread so the dock never sleeps.
     std::thread::spawn(move || {
-        std::thread::sleep(HIDDEN_ICONS_DELAY);
+        // Win+B 讓 Explorer 展開工作列並清掉隱形樣式：從這一刻起就一直補回，
+        // 否則等 Enter 的這段時間，以及面板開著的整段時間，工作列都會露出來。
+        let started = Instant::now();
+        while started.elapsed() < HIDDEN_ICONS_DELAY {
+            crate::taskbar::reapply_ghost();
+            std::thread::sleep(TASKBAR_GUARD_STEP);
+        }
         tap(&[VK_RETURN]);
-        let until = Instant::now() + HIDDEN_ICONS_HOLD;
-        while Instant::now() < until {
+        let hold_until = Instant::now() + HIDDEN_ICONS_HOLD;
+        let give_up = Instant::now() + HIDDEN_ICONS_MAX_OPEN;
+        let mut settle_until = hold_until;
+        loop {
+            let now = Instant::now();
             if let Some(flyout) = open_overflow() {
-                keep_under(flyout, anchor);
+                if now < hold_until {
+                    keep_under(flyout, anchor);
+                }
+                // 面板還開著就一直守著；收起後再多守一小段，Explorer 收面板時
+                // 可能又重設一次。
+                settle_until = now + TASKBAR_SETTLE;
             }
-            std::thread::sleep(Duration::from_millis(10));
+            crate::taskbar::reapply_ghost();
+            if now >= give_up || (now >= hold_until && now >= settle_until) {
+                break;
+            }
+            std::thread::sleep(TASKBAR_GUARD_STEP);
         }
     });
 }
@@ -296,6 +321,14 @@ pub fn toggle_hidden_icons(anchor: (i32, i32)) {
 /// 收起的工作列不提供系統匣按鈕給 UI Automation，點釘選圖示前要先這樣做。
 pub(crate) fn focus_notification_area() {
     tap(&[VK_LWIN, VK_B]);
+    // 展開時 Explorer 會清掉隱形樣式，短時間內補回，真正的工作列才不會留在畫面上。
+    std::thread::spawn(|| {
+        let until = Instant::now() + TASKBAR_SETTLE;
+        while Instant::now() < until {
+            crate::taskbar::reapply_ghost();
+            std::thread::sleep(TASKBAR_GUARD_STEP);
+        }
+    });
 }
 
 /// Whether the hidden-icons flyout was open when the mouse button went down
@@ -474,16 +507,41 @@ fn stack_group_behind(front: HWND, windows: &[isize], foreground: impl Fn() -> H
 
 /// Minimizes an app's windows, as clicking the active app's taskbar button
 /// does. Asynchronous, so an app that is not responding cannot block the dock.
+///
+/// 以系統管理員身分執行的視窗（工作管理員、系統管理員終端機）：UIPI 會擋下
+/// 一般權限程序對它呼叫 `ShowWindow` 系列函式，呼叫看似成功卻什麼都沒發生，
+/// 神燈替身擺好了視窗卻沒有收起來。系統選單的 `SC_MINIMIZE` 訊息不受影響
+/// （在提權的工作管理員上實測：`ShowWindowAsync`、`ShowWindow`、`CloseWindow`
+/// 都無效，`PostMessage(WM_SYSCOMMAND, SC_MINIMIZE)` 有效），所以提權視窗改送這個。
+/// 一般視窗維持原本的 `ShowWindowAsync`，沒有最小化鈕的視窗也照樣收得起來。
 pub fn minimize(windows: &[isize]) {
     for &raw in windows {
         let hwnd = HWND(raw as *mut _);
         // SAFETY: Calls on another window; they fail without effect if it is gone.
         unsafe {
-            if IsWindowVisible(hwnd).as_bool() && !IsIconic(hwnd).as_bool() {
+            if !IsWindowVisible(hwnd).as_bool() || IsIconic(hwnd).as_bool() {
+                continue;
+            }
+            if window_is_elevated(hwnd) {
+                let _ = PostMessageW(
+                    Some(hwnd),
+                    WM_SYSCOMMAND,
+                    WPARAM(SC_MINIMIZE as usize),
+                    LPARAM(0),
+                );
+            } else {
                 let _ = ShowWindowAsync(hwnd, SW_MINIMIZE);
             }
         }
     }
+}
+
+/// `hwnd` 屬於以系統管理員身分執行（或 Harbor 看不到權限）的程序。
+fn window_is_elevated(hwnd: HWND) -> bool {
+    let mut pid = 0u32;
+    // SAFETY: 唯讀查詢；`pid` 是有效的輸出參數，視窗已消失時 pid 維持 0。
+    unsafe { GetWindowThreadProcessId(hwnd, Some(&mut pid)) };
+    pid != 0 && process_is_elevated(pid)
 }
 
 #[cfg(test)]
@@ -588,6 +646,33 @@ mod tests {
             std::thread::yield_now();
         }
         assert!(!unsafe { IsIconic(target) }.as_bool());
+        Ok(())
+    }
+
+    #[test]
+    #[ignore = "Requires a Windows desktop; minimizes only a test-owned window"]
+    fn ordinary_window_is_not_elevated_and_still_minimizes() -> windows::core::Result<()> {
+        use windows::Win32::UI::WindowsAndMessaging::{
+            DispatchMessageW, MSG, PM_REMOVE, PeekMessageW,
+        };
+        let desktop = Desktop::new()?;
+        let target = desktop.windows[0];
+        // 自己建的視窗與測試程序同一個權限：不能被當成提權視窗，否則會改走
+        // 訊息路徑，一般視窗的行為就變了。
+        assert!(!window_is_elevated(target));
+        minimize(&[target.0 as isize]);
+        let deadline = Instant::now() + Duration::from_millis(300);
+        let mut message = MSG::default();
+        // SAFETY: 清空這個測試執行緒的訊息佇列，非同步的最小化才會完成。
+        while !unsafe { IsIconic(target) }.as_bool() && Instant::now() < deadline {
+            unsafe {
+                while PeekMessageW(&mut message, None, 0, 0, PM_REMOVE).as_bool() {
+                    DispatchMessageW(&message);
+                }
+            }
+            std::thread::yield_now();
+        }
+        assert!(unsafe { IsIconic(target) }.as_bool());
         Ok(())
     }
 
