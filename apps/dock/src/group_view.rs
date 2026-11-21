@@ -4,7 +4,6 @@
 //! it as its own dock icon would; dragging one away takes it out of the
 //! group, and the dock carries on with the drag (see `App::start_group_drag`).
 
-
 use anyhow::Result;
 use harbor_core::frame::DockEdge;
 use harbor_shell::{system::animations_enabled, tracker};
@@ -466,7 +465,10 @@ impl GroupView {
         );
         // 原本逐格算的 1 - (1 - t)^3（ease-out cubic）的貝茲近似。
         let ease: CompositionEasingFunction = c
-            .CreateCubicBezierEasingFunction(Vector2 { X: 0.33, Y: 1.0 }, Vector2 { X: 0.68, Y: 1.0 })?
+            .CreateCubicBezierEasingFunction(
+                Vector2 { X: 0.33, Y: 1.0 },
+                Vector2 { X: 0.68, Y: 1.0 },
+            )?
             .cast()?;
         let seconds = |value: f32| TimeSpan {
             Duration: (value * 1e7) as i64,

@@ -435,7 +435,10 @@ mod clock_tests {
             compose_clock("2026/11/21", "六", "下午 11:03"),
             "2026/11/21 (六) 下午 11:03"
         );
-        assert_eq!(compose_clock("2026/11/21", "", "11:03 PM"), "2026/11/21 11:03 PM");
+        assert_eq!(
+            compose_clock("2026/11/21", "", "11:03 PM"),
+            "2026/11/21 11:03 PM"
+        );
     }
 
     #[test]
@@ -452,6 +455,9 @@ mod clock_tests {
         let date = text.split(' ').next().unwrap_or_default();
         let parts: Vec<&str> = date.split('/').collect();
         assert_eq!(parts.len(), 3, "{text}");
-        assert!(parts.iter().all(|part| part.parse::<u32>().is_ok()), "{text}");
+        assert!(
+            parts.iter().all(|part| part.parse::<u32>().is_ok()),
+            "{text}"
+        );
     }
 }

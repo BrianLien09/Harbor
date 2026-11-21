@@ -3005,9 +3005,8 @@ fn toggle_panel(open: Option<Island>, clicked: Island) -> Option<Island> {
 /// 設定 app 冷啟動時會卡住狀態列的 UI 執行緒好一陣子。
 /// 背景工作起不來時退回直接開，至少功能不會壞。
 fn open_settings_page(uri: &str) {
-    let queued = crate::shell_work::dispatch(crate::shell_work::Action::Open {
-        id: uri.to_owned(),
-    });
+    let queued =
+        crate::shell_work::dispatch(crate::shell_work::Action::Open { id: uri.to_owned() });
     if queued.is_err() {
         let _ = launcher::open(uri);
     }
