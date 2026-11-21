@@ -5,8 +5,6 @@
   **為 Windows 10 與 11 打造的輕量級 macOS 風格 Dock。**
 
   Harbor 以可自訂的 Dock 取代 Windows 工作列，並提供選用的 macOS 風格選單列。
-
-  [English](README.en.md) · [Español](README.es.md) · [Français](README.fr.md) · **繁體中文**
 </div>
 
 <img width="1500" height="436" alt="Harbor 的 Dock 與選單列" src="https://github.com/user-attachments/assets/3c91b488-214d-453d-a8c2-a9e0dc7f245e" />
@@ -139,3 +137,11 @@ Harbor 不收集任何資料、沒有遙測，也絕不會把任何內容傳送�
   可在「設定 → 選單列 → *顯示 AI 供應商用量*」關閉。
 
 詳細說明：[brianlien09.github.io/Harbor/privacy](https://brianlien09.github.io/Harbor/privacy)。
+
+## 致謝與授權
+
+Harbor 以 [Muelle](https://github.com/crafter-station/Muelle)（Crafter Station 的 MIT 授權專案）為基礎，
+在此之上持續開發，並加入繁體中文介面等功能。感謝原作者開源這個專案。
+
+Harbor 以 [MIT 授權](LICENSE) 發布，原專案的版權聲明保留在 LICENSE 中；
+所用到的第三方授權聲明請見 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。
