@@ -53,7 +53,9 @@ use windows::{
                 UIA_InvokePatternId,
             },
             Shell::{KF_FLAG_DEFAULT, SHGetKnownFolderPath},
-            WindowsAndMessaging::{FindWindowW, PostMessageW},
+            WindowsAndMessaging::{
+                FindWindowW, GetForegroundWindow, GetWindowThreadProcessId, PostMessageW,
+            },
         },
     },
     core::{BSTR, GUID, HSTRING, PWSTR, w},
@@ -170,31 +172,47 @@ pub fn activate(key: u64, index: usize) {
     let spawned = thread::Builder::new()
         .name("harbor-tray-click".into())
         .spawn(move || {
+            let entry = Entry::read(key);
+            // app 的面板或視窗已經在前景：這一下是要收起它。真正的工作列也是
+            // 讓它失去焦點來收起；若照樣 Invoke，Win+B 先讓面板收起、Invoke
+            // 又把它打開，看起來就是閃一下又出現。
+            if entry.path.as_deref().is_some_and(is_foreground_process) {
+                crate::launcher::focus_notification_area();
+                return;
+            }
             // SAFETY: 新執行緒自己的 apartment，結束前釋放。
             let initialized = unsafe { CoInitializeEx(None, COINIT_MULTITHREADED) }.is_ok();
-            if let Some(buttons) = TrayButtons::new() {
-                let mut names = buttons.names();
-                if names.is_empty() {
+            if let Some(tray) = TrayButtons::new() {
+                let mut buttons = tray.find();
+                if buttons.is_none() {
                     crate::launcher::focus_notification_area();
                     let until = Instant::now() + REVEAL_TIMEOUT;
-                    while names.is_empty() && Instant::now() < until {
+                    while buttons.is_none() && Instant::now() < until {
                         thread::sleep(Duration::from_millis(50));
-                        names = buttons.names();
+                        buttons = tray.find();
                     }
                 }
-                let entry = Entry::read(key);
-                let position = names
-                    .iter()
-                    .position(|name| entry.matches(name))
-                    .or_else(|| (index < names.len()).then_some(index));
-                match position.and_then(|position| buttons.invoke(position).err()) {
-                    Some(error) => crate::log::line(&format!(
-                        "no se pudo abrir el icono de la bandeja: {error}"
-                    )),
-                    None if position.is_none() => crate::log::line(
-                        "no se encontró el icono de la bandeja en la barra de tareas",
-                    ),
-                    None => {}
+                match buttons {
+                    Some(buttons) => {
+                        // 名稱與點擊用同一份清單：重查的話，工作列可能已經又收起，
+                        // 清單變空，按索引取按鈕就會是無效參數（0x80070057）。
+                        let names = button_names(&buttons);
+                        let position = names
+                            .iter()
+                            .position(|name| entry.matches(name))
+                            .or_else(|| (index < names.len()).then_some(index));
+                        let result = position.map(|position| invoke(&buttons, position));
+                        match result {
+                            Some(Err(error)) => crate::log::line(&format!(
+                                "no se pudo abrir el icono de la bandeja: {error}"
+                            )),
+                            None => crate::log::line(
+                                "no se encontró el icono de la bandeja en la barra de tareas",
+                            ),
+                            Some(Ok(())) => {}
+                        }
+                    }
+                    None => crate::log::line("la barra de tareas no mostró la bandeja a tiempo"),
                 }
             }
             if initialized {
@@ -205,6 +223,20 @@ pub fn activate(key: u64, index: usize) {
     if let Err(error) = spawned {
         crate::log::line(&format!("no se pudo abrir el icono de la bandeja: {error}"));
     }
+}
+
+/// 前景視窗是否屬於 `path` 這個執行檔。
+fn is_foreground_process(path: &str) -> bool {
+    let mut pid = 0u32;
+    // SAFETY: 唯讀查詢；`pid` 是有效的輸出參數。
+    unsafe {
+        let window = GetForegroundWindow();
+        if window.is_invalid() {
+            return false;
+        }
+        GetWindowThreadProcessId(window, Some(&mut pid));
+    }
+    process_image(pid).is_some_and(|image| image == path.to_lowercase())
 }
 
 /// 工作列上的釘選圖示按鈕（UI Automation）。只在點擊時使用。
@@ -234,46 +266,43 @@ impl TrayButtons {
         }
     }
 
-    /// 由左到右的按鈕；工作列收起時是空的。
+    /// 由左到右的按鈕；工作列收起時（清單是空的）回傳 `None`。
     fn find(&self) -> Option<IUIAutomationElementArray> {
         // SAFETY: 唯讀的視窗查詢與 UI Automation 查詢。
         unsafe {
             // 每次重新找：Explorer 重啟後工作列是新的視窗。
             let tray = FindWindowW(w!("Shell_TrayWnd"), None).ok()?;
             let root = self.automation.ElementFromHandle(tray).ok()?;
-            root.FindAll(TreeScope_Descendants, &self.condition).ok()
+            let buttons = root.FindAll(TreeScope_Descendants, &self.condition).ok()?;
+            (buttons.Length().unwrap_or(0) > 0).then_some(buttons)
         }
     }
+}
 
-    fn names(&self) -> Vec<String> {
-        let Some(buttons) = self.find() else {
-            return Vec::new();
-        };
-        // SAFETY: 唯讀的 UI Automation 查詢。
-        unsafe {
-            let count = buttons.Length().unwrap_or(0).max(0);
-            (0..count)
-                .filter_map(|index| buttons.GetElement(index).ok())
-                .map(|element| {
-                    element
-                        .CurrentName()
-                        .map(|name| name.to_string())
-                        .unwrap_or_default()
-                })
-                .collect()
-        }
+fn button_names(buttons: &IUIAutomationElementArray) -> Vec<String> {
+    // SAFETY: 唯讀的 UI Automation 查詢。
+    unsafe {
+        let count = buttons.Length().unwrap_or(0).max(0);
+        (0..count)
+            .filter_map(|index| buttons.GetElement(index).ok())
+            .map(|element| {
+                element
+                    .CurrentName()
+                    .map(|name| name.to_string())
+                    .unwrap_or_default()
+            })
+            .collect()
     }
+}
 
-    fn invoke(&self, position: usize) -> windows::core::Result<()> {
-        let buttons = self.find().ok_or_else(windows::core::Error::empty)?;
-        let index = i32::try_from(position).map_err(|_| windows::core::Error::empty())?;
-        // SAFETY: 剛查到的工作列按鈕；Invoke 等同使用者點擊。
-        unsafe {
-            buttons
-                .GetElement(index)?
-                .GetCurrentPatternAs::<IUIAutomationInvokePattern>(UIA_InvokePatternId)?
-                .Invoke()
-        }
+fn invoke(buttons: &IUIAutomationElementArray, position: usize) -> windows::core::Result<()> {
+    let index = i32::try_from(position).map_err(|_| windows::core::Error::empty())?;
+    // SAFETY: 剛查到的工作列按鈕；Invoke 等同使用者點擊。
+    unsafe {
+        buttons
+            .GetElement(index)?
+            .GetCurrentPatternAs::<IUIAutomationInvokePattern>(UIA_InvokePatternId)?
+            .Invoke()
     }
 }
 
@@ -423,25 +452,26 @@ fn running_images() -> HashSet<String> {
         return HashSet::new();
     }
     pids.truncate(needed as usize / size_of::<u32>());
-    pids.into_iter()
-        .filter_map(|pid| {
-            // SAFETY: 以最小權限開啟，讀完立刻關閉。
-            unsafe {
-                let process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid).ok()?;
-                let mut buffer = [0u16; 1024];
-                let mut len = buffer.len() as u32;
-                let read = QueryFullProcessImageNameW(
-                    process,
-                    PROCESS_NAME_WIN32,
-                    PWSTR(buffer.as_mut_ptr()),
-                    &mut len,
-                );
-                let _ = CloseHandle(process);
-                read.ok()?;
-                Some(String::from_utf16_lossy(buffer.get(..len as usize)?).to_lowercase())
-            }
-        })
-        .collect()
+    pids.into_iter().filter_map(process_image).collect()
+}
+
+/// 行程的執行檔完整路徑（小寫）；系統行程打不開時為 `None`。
+fn process_image(pid: u32) -> Option<String> {
+    // SAFETY: 以最小權限開啟，讀完立刻關閉。
+    unsafe {
+        let process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid).ok()?;
+        let mut buffer = [0u16; 1024];
+        let mut len = buffer.len() as u32;
+        let read = QueryFullProcessImageNameW(
+            process,
+            PROCESS_NAME_WIN32,
+            PWSTR(buffer.as_mut_ptr()),
+            &mut len,
+        );
+        let _ = CloseHandle(process);
+        read.ok()?;
+        Some(String::from_utf16_lossy(buffer.get(..len as usize)?).to_lowercase())
+    }
 }
 
 fn registry_dword(key: u64, value: &str) -> Option<u32> {
