@@ -20,5 +20,6 @@ pub mod status;
 pub mod system;
 pub mod taskbar;
 pub mod tracker;
+pub mod tray;
 pub mod updates;
 pub mod watch;

@@ -292,6 +292,12 @@ pub fn toggle_hidden_icons(anchor: (i32, i32)) {
     });
 }
 
+/// 讓（被 Harbor 隱形、自動隱藏的）工作列展開，焦點移到系統匣。
+/// 收起的工作列不提供系統匣按鈕給 UI Automation，點釘選圖示前要先這樣做。
+pub(crate) fn focus_notification_area() {
+    tap(&[VK_LWIN, VK_B]);
+}
+
 /// Whether the hidden-icons flyout was open when the mouse button went down
 /// on the menu bar: if that press dismissed it, the click must not reopen it.
 static OVERFLOW_OPEN_AT_PRESS: AtomicBool = AtomicBool::new(false);

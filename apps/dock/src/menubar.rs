@@ -24,6 +24,7 @@ use harbor_shell::{
     launcher,
     status::{self, AudioWatch, Network, NetworkWatch, Privacy, TaskbarButtons, Volume},
     system::{self, Battery},
+    tray,
     watch::RegistryWatch,
 };
 use std::{
@@ -93,6 +94,8 @@ const AUDIO_CHANGED: u32 = WM_APP + 32;
 const AUDIO_TICK: u32 = WM_APP + 33;
 const VOLUME_TIMER: usize = 4;
 const ACCESSORIES_CHANGED: u32 = WM_APP + 30;
+/// 系統匣的釘選圖示變了（`tray::Watch` 送來）。
+const TRAY_CHANGED: u32 = WM_APP + 34;
 
 const CLOCK_TIMER: usize = 1;
 const POINTER_TIMER: usize = 2;
@@ -156,6 +159,8 @@ pub(crate) mod glyph {
     pub const MOUSE: char = '\u{E962}';
     pub const HEADSET: char = '\u{E95B}';
     pub const BLUETOOTH: char = '\u{E702}';
+    /// 系統匣圖示沒有快照可用時的替代圖示。
+    pub const APP: char = '\u{ECAA}';
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -169,6 +174,8 @@ enum Action {
     Widgets,
     HiddenIcons,
     InputLanguage,
+    /// 釘選在工作列系統匣外面的 app，由左數第幾顆。
+    PinnedTray(usize),
     Microphone,
     Camera,
     Bluetooth,
@@ -221,6 +228,8 @@ struct Look {
     clock: String,
     /// The input language indicator, when more than one is installed.
     input: Option<String>,
+    /// 原本在 Windows 系統匣看得到的釘選圖示。
+    tray: tray::Snapshot,
     battery: Option<Battery>,
     status: Status,
     widgets: MenuBarWidgets,
@@ -423,6 +432,7 @@ pub struct MenuBar {
     /// Energy saver on or off arrives as `WM_POWERBROADCAST`; glass follows.
     _saver_watch: harbor_shell::power::SaverWatch,
     audio: Option<AudioWatch>,
+    tray: tray::Watch,
 }
 
 unsafe extern "system" fn bar_proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM) -> LRESULT {
@@ -463,6 +473,7 @@ unsafe extern "system" fn bar_proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM) -
         DISMISS_ISLAND => app::menu_bar_dismiss_island(),
         REGISTRY_CHANGED => app::menu_bar_registry_changed(),
         ACCESSORIES_CHANGED => app::menu_bar_accessories_changed(),
+        TRAY_CHANGED => app::menu_bar_refresh(),
         MEDIA_CHANGED => app::menu_bar_media_changed(),
         AUDIO_CHANGED => {
             if !AUDIO_TICK_PENDING.swap(true, Ordering::Relaxed) {
@@ -1147,6 +1158,7 @@ impl MenuBar {
             settings_watch: status::watch_taskbar_settings(hwnd.0 as isize, REGISTRY_CHANGED),
             _saver_watch: harbor_shell::power::SaverWatch::new(hwnd.0 as isize),
             audio: AudioWatch::new(hwnd.0 as isize, AUDIO_CHANGED),
+            tray: tray::Watch::start(hwnd.0 as isize, TRAY_CHANGED),
         };
         AUDIO_TICK_PENDING.store(false, Ordering::Relaxed);
         bar.update_status();
@@ -1777,6 +1789,15 @@ impl MenuBar {
             Some(Action::Bluetooth) => launcher::open_bluetooth(),
             Some(Action::HiddenIcons) => launcher::toggle_hidden_icons(anchor),
             Some(Action::InputLanguage) => {} // Opened outside the app borrow.
+            Some(Action::PinnedTray(index)) => {
+                if let Some(pinned) = self
+                    .look
+                    .as_ref()
+                    .and_then(|look| look.tray.pinned.get(index))
+                {
+                    tray::activate(pinned.key, index);
+                }
+            }
             // Windows' own pages list which apps use each device.
             Some(Action::Microphone) => {
                 let _ = launcher::open("ms-settings:privacy-microphone");
@@ -1838,6 +1859,7 @@ impl MenuBar {
             app_name: self.app_name.clone(),
             clock: system::clock_text(),
             input: system::input_language(),
+            tray: self.tray.snapshot(),
             battery: system::battery(),
             status: self.status,
             widgets: self.widgets,
@@ -2069,6 +2091,21 @@ impl MenuBar {
                 gfx.text_brush(language, scale, false, ink)?,
                 Action::InputLanguage,
             ));
+        }
+        // 和 Windows 系統匣相同的排列：釘選圖示在輸入法語言左邊。
+        // items 由右往左排，所以倒著放。
+        let icon_side = px(16.0);
+        for (index, pinned) in look.tray.pinned.iter().enumerate().rev() {
+            let brush = match &pinned.icon {
+                // 快照是 app 自己畫的彩色圖示，不套用文字顏色。
+                Some(icon) => LabelBrush {
+                    brush: gfx.icon_brush(icon, icon_side as u32)?,
+                    width: icon_side,
+                    height: icon_side,
+                },
+                None => symbol(&[(glyph::APP, 1.0)])?,
+            };
+            items.push((brush, Action::PinnedTray(index)));
         }
         // The notification area (antivirus, OneDrive, apps in the background)
         // lives only in the hidden taskbar; this arrow opens its flyout.
