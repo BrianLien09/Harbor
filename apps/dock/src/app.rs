@@ -74,7 +74,8 @@ use windows::{
             },
             WindowsAndMessaging::{
                 CreateWindowExW, DefWindowProcW, DispatchMessageW, EVENT_OBJECT_CLOAKED,
-                EVENT_OBJECT_UNCLOAKED, EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_MINIMIZEEND,
+                EVENT_OBJECT_UNCLOAKED, EVENT_SYSTEM_CAPTUREEND, EVENT_SYSTEM_CAPTURESTART,
+                EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_MINIMIZEEND,
                 EVENT_SYSTEM_MINIMIZESTART, FindWindowW, GetCursorPos, GetMessageW,
                 GetSystemMetrics, HMENU, HWND_TOPMOST, IDC_ARROW, KillTimer, LoadCursorW,
                 MA_ACTIVATE, MA_NOACTIVATE, MSG, OBJID_WINDOW, PM_REMOVE, PeekMessageW,
@@ -97,7 +98,7 @@ use crate::{
     assets::{Visuals, fallback_name},
     drop::DropTarget,
     edge_watch::{self, EdgeWatch, Reveal, Target as EdgeTarget},
-    flight::{Flight, Snapshot},
+    flight::{Flight, Snapshot, Spare},
     folder_menu,
     gfx::{Gfx, LabelBrush},
     group_view::{DragGhost, GroupItem, GroupView, Placement, Released},
@@ -179,8 +180,9 @@ const SYNC_TIMER: usize = 2;
 const SYNC_DELAY_MS: u32 = 40;
 /// Minimized windows whose snapshot is kept to fly them back out of the dock.
 /// Each costs a quarter of the window's pixels; older ones restore without
-/// the genie.
-const MAX_SNAPSHOTS: usize = 4;
+/// the genie. 一張約 2 MB（1080p 視窗），4 張常常不夠：同時最小化五、六個
+/// 視窗後，最早的那幾個從 dock 點回來就沒有神燈。
+const MAX_SNAPSHOTS: usize = 8;
 /// After Explorer restarts or the system resumes, the new taskbar needs time
 /// to apply its initial state before it can be taken over again.
 const TASKBAR_TIMER: usize = 3;
@@ -239,6 +241,12 @@ const ASSETS_DELAY_MS: u32 = 16;
 /// Non-activating windows cannot rely on capture outside their bounds.
 /// Armed only while dragging or holding a draggable icon.
 const DRAG_TIMER: usize = 16;
+/// 替身擺到視窗後方之後，等最小化開始的期限（見 `App::on_capture_end`）。
+/// 放開滑鼠到最小化開始實測約 15 ms，dock 發起的最小化也在幾十毫秒內。
+const ARM_TIMER: usize = 17;
+const ARM_TIMEOUT_MS: u32 = 400;
+/// 詢問被按下的視窗游標位置是不是最小化鈕，最多等這麼久。
+const HIT_TEST_TIMEOUT_MS: u32 = 50;
 const DRAG_POLL_MS: u32 = 16;
 
 /// Auto-hide slide speed (about 250 ms).
@@ -295,6 +303,7 @@ static DROP_WINDOW: AtomicIsize = AtomicIsize::new(0);
 static MINIMIZE_HOOK: AtomicIsize = AtomicIsize::new(0);
 static CLOAK_HOOK: AtomicIsize = AtomicIsize::new(0);
 static FOREGROUND_HOOK: AtomicIsize = AtomicIsize::new(0);
+static CAPTURE_HOOK: AtomicIsize = AtomicIsize::new(0);
 /// The window in front before the Alt+Tab switcher opened.
 static LAST_FRONT: AtomicIsize = AtomicIsize::new(0);
 
@@ -816,6 +825,8 @@ struct App {
     thumbnails: Thumbnails,
     /// Genie animations in progress.
     flights: Vec<Flight>,
+    /// 下一次最小化用的替身視窗，事先建好（見 `flight::Spare`）。
+    spare: Option<Spare>,
     /// What the windows minimized with the genie looked like, oldest first.
     snapshots: Vec<(isize, Snapshot)>,
     menubar: Option<MenuBar>,
@@ -1823,6 +1834,23 @@ impl App {
         }
     }
 
+    /// 關掉單一視窗的系統轉場。`calm_windows` 只在（防抖過的）`sync` 跑，
+    /// 剛開的視窗、或自己把轉場改回來的 app，在下一次 sync 前最小化／還原
+    /// 就會播 Windows 原生動畫。所以在「馬上要最小化或還原」的時間點再
+    /// 補一次；DWM 呼叫很便宜，重複設定沒有副作用。
+    fn calm_window(&mut self, hwnd: isize) {
+        if !self.config.genie || !animations_enabled() {
+            return;
+        }
+        if !self.windows.iter().any(|window| window.hwnd == hwnd) {
+            return;
+        }
+        set_window_transitions(hwnd, false);
+        if !self.calmed.contains(&hwnd) {
+            self.calmed.push(hwnd);
+        }
+    }
+
     fn restore_transitions(&mut self) {
         for hwnd in self.calmed.drain(..) {
             set_window_transitions(hwnd, true);
@@ -1830,19 +1858,21 @@ impl App {
     }
 
     /// Brings windows to the front. A minimized one flies out of the dock if
-    /// it flew in; otherwise it gets its system transitions back first, so it
-    /// returns with the system's restore animation (the next `sync` turns
-    /// them off again).
+    /// it flew in.
+    ///
+    /// 沒有快照可飛（dock 啟動前就最小化的視窗等）時直接還原，不再先打開
+    /// 系統轉場：那會讓同一個 dock 時而播神燈、時而播 Windows 原生還原
+    /// 動畫，而且下一次 `sync` 之前再最小化，還會連原生最小化動畫一起漏出來。
     fn activating(&mut self, windows: Vec<isize>) -> Option<Outside> {
+        // 還原前確保轉場是關的：不論有沒有神燈，都不該冒出原生還原動畫。
+        for hwnd in &windows {
+            if self.minimized.contains(hwnd) {
+                self.calm_window(*hwnd);
+            }
+        }
         if self.start_restore_flight(&windows) {
             // `tick` restores the window when the genie reaches full size.
             return None;
-        }
-        for hwnd in &windows {
-            if self.minimized.contains(hwnd) {
-                set_window_transitions(*hwnd, true);
-                self.calmed.retain(|calmed| calmed != hwnd);
-            }
         }
         Some(Outside::Activate(windows))
     }
@@ -1851,7 +1881,10 @@ impl App {
     /// restore. `false` if the genie does not apply and the caller must
     /// restore it directly.
     fn start_restore_flight(&mut self, windows: &[isize]) -> bool {
-        if !self.config.genie || !animations_enabled() || !self.flights.is_empty() {
+        // 其他視窗的神燈還在飛不影響：還原用現成的快照，不必擷取螢幕。
+        // 以前只要有任何飛行（包括上一個還原最後 120 ms 的收尾）就放棄神燈，
+        // 改播系統的還原動畫。
+        if !self.config.genie || !animations_enabled() {
             return false;
         }
         // Activation restores a window only when all of them are minimized,
@@ -1865,6 +1898,19 @@ impl App {
             windows::Win32::UI::WindowsAndMessaging::IsIconic(HWND(*window as *mut _)).as_bool()
         }) {
             return false;
+        }
+        if let Some(index) = self.flights.iter().position(|flight| flight.hwnd == hwnd) {
+            if self.flights.get(index).is_some_and(Flight::is_restoring) {
+                // Already flying out: this click changes nothing.
+                return true;
+            }
+            // 最小化還沒飛完就被點回來：收掉那趟飛行，有擷取到畫面就從
+            // dock 倒著飛回去，否則直接還原。
+            let mut landing = self.flights.remove(index);
+            if let Some(snapshot) = landing.take_snapshot_for_restore() {
+                self.snapshots.retain(|(owner, _)| *owner != hwnd);
+                self.snapshots.push((hwnd, snapshot));
+            }
         }
         let Some(position) = self.snapshots.iter().position(|(owner, _)| *owner == hwnd) else {
             return false;
@@ -1920,11 +1966,142 @@ impl App {
         }
     }
 
+    /// 備好下一次最小化的替身（見 `flight::Spare`），並替前景視窗先註冊縮圖。
+    /// 全螢幕時拆掉：那時不播神燈，也不該多一個頂層視窗壓在全螢幕程式上。
+    /// 飛行中不建：建視窗要花 UI 執行緒幾毫秒，等動畫結束後的 `sync` 再補。
+    fn prepare_spare(&mut self) {
+        if !self.config.genie || !animations_enabled() || self.fullscreen {
+            self.spare = None;
+            return;
+        }
+        // 使用者最常最小化的就是前景視窗：每次切換都確保它的轉場是關的
+        // （剛開的視窗還沒等到 sync，或有些 app 會自己改回來），
+        // 這一步不受下面替身準備的提前返回影響。
+        let front = tracker::foreground_window();
+        if self
+            .windows
+            .iter()
+            .any(|window| window.hwnd == front && !window.minimized)
+        {
+            self.calm_window(front);
+        }
+        if !self.flights.is_empty() {
+            return;
+        }
+        let Some(screen) = self.stage.as_ref().map(|stage| stage.key.screen) else {
+            return;
+        };
+        if self.spare.as_ref().is_none_or(|spare| !spare.covers(screen)) {
+            self.spare = Spare::new(&self.gfx, screen);
+        }
+        if !self
+            .windows
+            .iter()
+            .any(|window| window.hwnd == front && !window.minimized)
+        {
+            return;
+        }
+        // 與 `show_stand_ins` 同一套算法，最小化時位置相同就不必再改縮圖。
+        let last_seen = self.last_rects.get(&front).copied();
+        if let (Some(spare), Some((from, _))) = (
+            self.spare.as_mut(),
+            tracker::rect_before_minimize(front, last_seen),
+        ) {
+            spare.watch(front, from);
+        }
+    }
+
+    /// 有視窗按下了滑鼠（`EVENT_SYSTEM_CAPTURESTART`）。按的若是前景視窗
+    /// 的最小化鈕，放開時它就會最小化：趁這段時間（通常 80-150 ms）先把
+    /// 替身擺到它後方（見 `flight::Spare::arm_behind`）。
+    ///
+    /// 只有 Win32 標準標題列與 Chrome／Electron 這類自己處理標題列、但回應
+    /// `WM_NCHITTEST` 的視窗有這個訊號；UWP 的標題列按鈕不會擷取滑鼠，只能
+    /// 靠事件來時搶時間。
+    fn on_capture_start(&mut self, hwnd: isize) -> Result<()> {
+        use windows::Win32::UI::WindowsAndMessaging::{
+            GA_ROOT, GetAncestor, HTMINBUTTON, SMTO_ABORTIFHUNG, SendMessageTimeoutW,
+            WM_NCHITTEST,
+        };
+        if self.fullscreen {
+            return Ok(());
+        }
+        // SAFETY: Read-only window query.
+        let root = unsafe { GetAncestor(HWND(hwnd as *mut _), GA_ROOT) }.0 as isize;
+        if root != tracker::foreground_window()
+            || !self
+                .windows
+                .iter()
+                .any(|window| window.hwnd == root && !window.minimized)
+        {
+            return Ok(());
+        }
+        let mut point = POINT::default();
+        // SAFETY: `point` remains alive for the duration of the call.
+        unsafe { GetCursorPos(&mut point)? };
+        let mut hit = 0usize;
+        // 跨行程詢問游標下是哪個部位。對方正在處理這次按下，很快就會回；
+        // 沒回應就放棄，不讓 dock 卡住。
+        // SAFETY: A queued request to a live top-level window, with a timeout.
+        unsafe {
+            let _ = SendMessageTimeoutW(
+                HWND(root as *mut _),
+                WM_NCHITTEST,
+                WPARAM(0),
+                LPARAM((((point.y as u16 as u32) << 16) | point.x as u16 as u32) as isize),
+                SMTO_ABORTIFHUNG,
+                HIT_TEST_TIMEOUT_MS,
+                Some(&mut hit),
+            );
+        }
+        if hit == HTMINBUTTON as usize {
+            // 放開滑鼠前還有幾十毫秒，足夠讓關轉場生效。
+            self.calm_window(root);
+            if self.spare.is_some() {
+                self.arm_stand_in(root);
+            }
+        }
+        Ok(())
+    }
+
+    /// 滑鼠放開了。若剛才擺好替身，最小化會在幾毫秒內開始；沒有的話
+    /// （按住後移開才放開）稍後收起。
+    fn on_capture_end(&mut self) {
+        if self.spare.as_ref().is_some_and(Spare::is_armed) {
+            // SAFETY: Timer on our own window.
+            unsafe { SetTimer(Some(self.input), ARM_TIMER, ARM_TIMEOUT_MS, None) };
+        }
+    }
+
+    /// `hwnd` 馬上要最小化：把它的替身先擺到它後方。
+    fn arm_stand_in(&mut self, hwnd: isize) {
+        // 和 `show_stand_ins` 同一套位置算法，最小化時才不必再改縮圖。
+        self.remember_rect(hwnd);
+        let last_seen = self.last_rects.get(&hwnd).copied();
+        if let (Some(spare), Some((from, _))) = (
+            self.spare.as_mut(),
+            tracker::rect_before_minimize(hwnd, last_seen),
+        ) {
+            spare.arm_behind(hwnd, from);
+        }
+    }
+
+    /// 擺好的替身沒有等到最小化。
+    fn disarm_stand_in(&mut self) {
+        if let Some(spare) = self.spare.as_mut() {
+            spare.disarm();
+        }
+    }
+
     fn show_stand_ins(&mut self, windows: &[isize]) {
         // Respect "Animation effects" being turned off in Windows settings.
-        // One genie at a time: minimizing everything at once (Win+D) would
-        // otherwise take a screen snapshot per window.
-        if !self.config.genie || !animations_enabled() || !self.flights.is_empty() {
+        // One minimize at a time: minimizing everything at once (Win+D) would
+        // otherwise take a screen snapshot per window. 還原中的飛行不算：
+        // 以前那段時間最小化的視窗沒有快照，下次還原就沒有神燈。
+        if !self.config.genie
+            || !animations_enabled()
+            || self.flights.iter().any(|flight| !flight.is_restoring())
+        {
             return;
         }
         let Some(screen) = self.stage.as_ref().map(|stage| stage.key.screen) else {
@@ -1935,12 +2112,20 @@ impl App {
             let Some((from, frame)) = tracker::rect_before_minimize(hwnd, last_seen) else {
                 continue;
             };
+            // 平常用事先備好的替身（見 `flight::Spare`）；沒有或螢幕不對才現建。
+            let Some(spare) = self
+                .spare
+                .take()
+                .filter(|spare| spare.covers(screen))
+                .or_else(|| Spare::new(&self.gfx, screen))
+            else {
+                continue;
+            };
             if let Some(flight) = Flight::start(
-                &self.gfx,
+                spare,
                 hwnd,
                 from,
                 frame,
-                screen,
                 self.config.genie_speed.seconds(),
                 self.position(),
             ) {
@@ -3252,6 +3437,16 @@ impl App {
             self.start_bounce(id.clone(), None);
             Some(Outside::Open(id))
         } else if group_is_foreground(&windows, tracker::foreground_window()) {
+            // dock 自己要最小化前景 app：先擺好替身再最小化，不必搶時間。
+            let front = tracker::foreground_window();
+            for hwnd in &windows {
+                self.calm_window(*hwnd);
+            }
+            if windows.contains(&front) && self.flights.iter().all(Flight::is_restoring) {
+                self.arm_stand_in(front);
+                // SAFETY: Timer on our own window.
+                unsafe { SetTimer(Some(self.input), ARM_TIMER, ARM_TIMEOUT_MS, None) };
+            }
             Some(Outside::Minimize(windows))
         } else {
             self.activating(windows)
@@ -4057,7 +4252,9 @@ impl App {
             self.render()?;
         }
         // A foreground-window change may mean an app entered or exited full-screen mode.
-        self.update_fullscreen()
+        self.update_fullscreen()?;
+        self.prepare_spare();
+        Ok(())
     }
 
     fn tick(&mut self) -> Result<Option<Outside>> {
@@ -4506,6 +4703,7 @@ impl App {
         #[cfg(feature = "recover-browser-z-order")]
         tracker::recover_browser_z_order(&self.windows, foreground);
         self.update_fullscreen()?;
+        self.prepare_spare();
         if attention_changed {
             self.sync_attention_visuals()?;
             self.render()?;
@@ -4593,6 +4791,13 @@ unsafe extern "system" fn on_win_event(
     }
     if event == EVENT_SYSTEM_MINIMIZESTART {
         with_app("minimizar", |app| app.on_minimize_start(hwnd.0 as isize));
+    } else if event == EVENT_SYSTEM_CAPTURESTART {
+        with_app("botón minimizar", |app| app.on_capture_start(hwnd.0 as isize));
+    } else if event == EVENT_SYSTEM_CAPTUREEND {
+        with_app("botón minimizar", |app| {
+            app.on_capture_end();
+            Ok(())
+        });
     } else if event == EVENT_SYSTEM_MINIMIZEEND {
         // Restored from outside the dock (Alt+Tab, the app itself): no shell
         // hook reports it, and a window the dock still thought minimized kept
@@ -5108,6 +5313,16 @@ unsafe extern "system" fn wndproc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM) ->
             }
         }
         WM_TIMER if w.0 == DRAG_TIMER => with_app_then("arrastre", App::poll_drag),
+        WM_TIMER if w.0 == ARM_TIMER => {
+            // SAFETY: `hwnd` is this live window on its owning UI thread.
+            unsafe {
+                let _ = KillTimer(Some(hwnd), w.0);
+            }
+            with_app("sustituto preparado", |app| {
+                app.disarm_stand_in();
+                Ok(())
+            });
+        }
         DROP_RUN => with_app_then("soltar archivos", |app| Ok(app.pending_drop.take())),
         WM_RBUTTONUP => with_app_then("menú", App::on_right_click),
         BIN_STATE => with_app("papelera", |app| app.set_bin_full(w.0 != 0)),
@@ -5452,6 +5667,7 @@ pub fn run() -> Result<()> {
             minimized: Vec::new(),
             thumbnails: Thumbnails::new(visual),
             flights: Vec::new(),
+            spare: None,
             snapshots: Vec::new(),
             menubar: None,
             edge_watch: None,
@@ -5547,6 +5763,18 @@ pub fn run() -> Result<()> {
             WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS,
         );
         FOREGROUND_HOOK.store(foreground_hook.0 as isize, Ordering::Relaxed);
+        // 按下滑鼠：用來提前知道標題列的最小化鈕被按下了（見
+        // `App::on_capture_start`）。每次按下一個事件，平常幾乎沒有成本。
+        let capture_hook = SetWinEventHook(
+            EVENT_SYSTEM_CAPTURESTART,
+            EVENT_SYSTEM_CAPTUREEND,
+            None,
+            Some(on_win_event),
+            0,
+            0,
+            WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS,
+        );
+        CAPTURE_HOOK.store(capture_hook.0 as isize, Ordering::Relaxed);
         LAST_FRONT.store(tracker::foreground_window(), Ordering::Relaxed);
         let target: IDropTarget = DropTarget.into();
         RegisterDragDrop(input, &target)?;
@@ -5571,7 +5799,7 @@ pub fn run() -> Result<()> {
     // SAFETY: The drop target was registered on this window in this thread.
     unsafe {
         let _ = RevokeDragDrop(HWND(DROP_WINDOW.load(Ordering::Relaxed) as *mut _));
-        for hook in [&MINIMIZE_HOOK, &CLOAK_HOOK, &FOREGROUND_HOOK] {
+        for hook in [&MINIMIZE_HOOK, &CLOAK_HOOK, &FOREGROUND_HOOK, &CAPTURE_HOOK] {
             let _ = UnhookWinEvent(HWINEVENTHOOK(hook.load(Ordering::Relaxed) as *mut _));
         }
     }

@@ -77,12 +77,13 @@ use windows::{
         Foundation::{HWND, LPARAM, LRESULT, RECT, WPARAM},
         Graphics::Dwm::{
             DWM_THUMBNAIL_PROPERTIES, DWM_TNP_OPACITY, DWM_TNP_RECTDESTINATION,
-            DWM_TNP_SOURCECLIENTAREAONLY, DWM_TNP_VISIBLE, DwmRegisterThumbnail,
+            DWM_TNP_SOURCECLIENTAREAONLY, DWM_TNP_VISIBLE, DwmFlush, DwmRegisterThumbnail,
             DwmUnregisterThumbnail, DwmUpdateThumbnailProperties,
         },
         System::{LibraryLoader::GetModuleHandleW, WinRT::Composition::ICompositorDesktopInterop},
         UI::WindowsAndMessaging::{
-            CreateWindowExW, DefWindowProcW, DestroyWindow, RegisterClassW, SW_SHOWNOACTIVATE,
+            CreateWindowExW, DefWindowProcW, DestroyWindow, HWND_TOPMOST, RegisterClassW,
+            SW_SHOWNOACTIVATE,
             SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_SHOWWINDOW, SetWindowPos, ShowWindow,
             WNDCLASSW, WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_NOREDIRECTIONBITMAP,
             WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_EX_TRANSPARENT, WS_POPUP,
@@ -274,7 +275,8 @@ struct Piece {
 
 struct Captured {
     image: IconImage,
-    restore: IconImage,
+    /// 還原用的縮小版，擷取執行緒在送出 `image` 之後才算（見 `Flight::start`）。
+    restore: Receiver<IconImage>,
 }
 
 enum Phase {
@@ -295,6 +297,233 @@ enum Phase {
     },
     /// A restore has reached full size and waits for the real window.
     Settling { until: Instant },
+}
+
+/// 下一次最小化要用的替身與動畫視窗，事先備好。
+///
+/// 系統轉場關掉後，視窗在按下最小化後的下一個合成幀就消失。替身若等事件
+/// 來了才建（兩個視窗、合成目標、註冊縮圖、顯示，debug build 共 15-18 ms），
+/// 常常晚一幀才上畫面，那一幀露出後面的桌面，就是「先閃一下」。
+///
+/// 所以平常就備好：替身視窗一直顯示著（透明、點擊穿透、沒有內容），前景
+/// 視窗的縮圖也先註冊好、擺好位置但不顯示；事件來時只剩一次
+/// `DwmUpdateThumbnailProperties` 加 `DwmFlush`。實測這樣仍有少數幾次會晚
+/// 一幀：DWM 套用縮圖變更的時機本來就可能比視窗隱藏晚。
+///
+/// 能預知的最小化就不靠搶時間：按下標題列最小化鈕的那一刻、或 dock 自己
+/// 要最小化前景 app 時，先用 [`Spare::arm_behind`] 把縮圖顯示在視窗正後方
+/// （被視窗本身蓋住，看不到）。視窗一消失，替身在同一幀就露出來。
+///
+/// 動畫視窗（overlay）維持隱藏，等替身上去之後才顯示。全螢幕時 dock 不播
+/// 神燈，`App::prepare_spare` 會拆掉這組視窗，避免壓在全螢幕程式上。
+pub struct Spare {
+    screen: RECT,
+    parts: Option<Parts>,
+}
+
+/// 預先註冊好的縮圖。
+struct Armed {
+    hwnd: isize,
+    thumbnail: isize,
+    /// 縮圖擺放的位置（螢幕座標），和最小化時的位置不同就得重設。
+    from: RECT,
+    shown: bool,
+}
+
+struct Parts {
+    stand: HWND,
+    overlay: HWND,
+    target: DesktopWindowTarget,
+    root: ContainerVisual,
+    armed: Option<Armed>,
+    /// 替身正擺在這個視窗正後方等它最小化（見 [`Spare::arm_behind`]）。
+    behind: Option<isize>,
+}
+
+impl Parts {
+    /// 讓縮圖顯示 `hwnd`、擺在 `from`，`shown` 決定看不看得到。狀態沒變
+    /// 就不呼叫 DWM。回傳縮圖代號與這次是否真的改了；註冊失敗回傳 `None`。
+    fn set(
+        &mut self,
+        hwnd: isize,
+        from: RECT,
+        shown: bool,
+        screen: RECT,
+    ) -> Option<(isize, bool)> {
+        if let Some(armed) = &self.armed
+            && armed.hwnd == hwnd
+            && armed.from == from
+            && armed.shown == shown
+        {
+            return Some((armed.thumbnail, false));
+        }
+        let thumbnail = match self.armed.take() {
+            Some(armed) if armed.hwnd == hwnd => armed.thumbnail,
+            other => {
+                if let Some(armed) = other {
+                    // SAFETY: Registered here in an earlier call; released once.
+                    unsafe {
+                        let _ = DwmUnregisterThumbnail(armed.thumbnail);
+                    }
+                }
+                // SAFETY: `stand` is our live window; a closed source fails harmlessly.
+                unsafe { DwmRegisterThumbnail(self.stand, HWND(hwnd as *mut _)) }.ok()?
+            }
+        };
+        // The stand-in: the whole window, exactly where it was.
+        let properties = DWM_THUMBNAIL_PROPERTIES {
+            dwFlags: DWM_TNP_RECTDESTINATION
+                | DWM_TNP_VISIBLE
+                | DWM_TNP_OPACITY
+                | DWM_TNP_SOURCECLIENTAREAONLY,
+            rcDestination: RECT {
+                left: from.left - screen.left,
+                top: from.top - screen.top,
+                right: from.right - screen.left,
+                bottom: from.bottom - screen.top,
+            },
+            opacity: 255,
+            fVisible: shown.into(),
+            fSourceClientAreaOnly: false.into(),
+            ..Default::default()
+        };
+        // SAFETY: A live thumbnail handle.
+        unsafe {
+            let _ = DwmUpdateThumbnailProperties(thumbnail, &properties);
+        }
+        self.armed = Some(Armed {
+            hwnd,
+            thumbnail,
+            from,
+            shown,
+        });
+        Some((thumbnail, true))
+    }
+}
+
+impl Spare {
+    /// 蓋住 `screen` 的一組視窗：替身視窗顯示（但沒有內容）、動畫視窗隱藏。
+    pub fn new(gfx: &Gfx, screen: RECT) -> Option<Self> {
+        let stand = create_window(screen)?;
+        let Some((overlay, target, root)) = create_overlay(gfx, screen) else {
+            // SAFETY: Our own window, destroyed once.
+            unsafe {
+                let _ = DestroyWindow(stand);
+            }
+            return None;
+        };
+        // SAFETY: Our own live window; it has no content until a thumbnail shows.
+        unsafe {
+            let _ = ShowWindow(stand, SW_SHOWNOACTIVATE);
+        }
+        Some(Self {
+            screen,
+            parts: Some(Parts {
+                stand,
+                overlay,
+                target,
+                root,
+                armed: None,
+                behind: None,
+            }),
+        })
+    }
+
+    /// 是否適用於這個螢幕；螢幕換了（解析度、dock 換螢幕）就得重建。
+    #[must_use]
+    pub fn covers(&self, screen: RECT) -> bool {
+        self.screen == screen
+    }
+
+    /// 先替 `hwnd`（前景視窗，最可能被最小化）在 `from`（算法同
+    /// `tracker::rect_before_minimize`）註冊好縮圖，先不顯示。
+    pub fn watch(&mut self, hwnd: isize, from: RECT) {
+        let screen = self.screen;
+        if let Some(parts) = self.parts.as_mut()
+            && parts.behind.is_none()
+        {
+            let _ = parts.set(hwnd, from, false, screen);
+        }
+    }
+
+    /// `hwnd` 馬上要最小化：把它的縮圖顯示在它正後方。視窗本身蓋住縮圖，
+    /// 畫面上沒有變化；視窗消失的那一幀，替身就已經在那裡。
+    pub fn arm_behind(&mut self, hwnd: isize, from: RECT) {
+        let screen = self.screen;
+        let Some(parts) = self.parts.as_mut() else {
+            return;
+        };
+        if parts.set(hwnd, from, true, screen).is_none() {
+            return;
+        }
+        // SAFETY: Reorders our own live window; `hwnd` only serves as the
+        // place in the z-order, a closed one makes the call fail harmlessly.
+        unsafe {
+            let _ = SetWindowPos(
+                parts.stand,
+                Some(HWND(hwnd as *mut _)),
+                0,
+                0,
+                0,
+                0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
+            );
+            // dock 發起的最小化緊接在後；等這些變更進了合成再讓它開始。
+            let _ = DwmFlush();
+        }
+        parts.behind = Some(hwnd);
+    }
+
+    /// 等到的最小化沒有發生（例如按住最小化鈕又移開才放開）：收起縮圖，
+    /// 替身視窗回到最上層。
+    pub fn disarm(&mut self) {
+        let screen = self.screen;
+        let Some(parts) = self.parts.as_mut() else {
+            return;
+        };
+        let Some(hwnd) = parts.behind.take() else {
+            return;
+        };
+        if let Some(from) = parts.armed.as_ref().map(|armed| armed.from) {
+            let _ = parts.set(hwnd, from, false, screen);
+        }
+        // SAFETY: Reorders our own live window.
+        unsafe {
+            let _ = SetWindowPos(
+                parts.stand,
+                Some(HWND_TOPMOST),
+                0,
+                0,
+                0,
+                0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
+            );
+        }
+    }
+
+    /// 替身正擺在某個視窗後方等它最小化。
+    #[must_use]
+    pub fn is_armed(&self) -> bool {
+        self.parts
+            .as_ref()
+            .is_some_and(|parts| parts.behind.is_some())
+    }
+}
+
+impl Drop for Spare {
+    fn drop(&mut self) {
+        if let Some(parts) = self.parts.take() {
+            // SAFETY: Our own handles, released once; a flight that took
+            // them left `parts` empty.
+            unsafe {
+                if let Some(armed) = parts.armed {
+                    let _ = DwmUnregisterThumbnail(armed.thumbnail);
+                }
+                let _ = DestroyWindow(parts.stand);
+                let _ = DestroyWindow(parts.overlay);
+            }
+        }
+    }
 }
 
 pub struct Flight {
@@ -323,8 +552,8 @@ pub struct Flight {
     restoring: bool,
     /// The real window still has to be restored (restore flights only).
     restore_pending: bool,
-    /// Reduced restore pixels prepared on the capture worker.
-    captured: Option<(IconImage, RECT)>,
+    /// Reduced restore pixels, still being prepared on the capture worker.
+    captured: Option<(Receiver<IconImage>, RECT)>,
 }
 
 unsafe extern "system" fn overlay_proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM) -> LRESULT {
@@ -602,22 +831,22 @@ fn local(rect: RECT, screen: RECT) -> Edges {
 
 impl Flight {
     /// Puts up the stand-in of a window that is being minimized, where it was
-    /// (`from`, a screen rectangle; `screen` is the monitor the overlay
-    /// covers). The flight takes off once [`Flight::aim`] gives it its slot.
+    /// (`from`, a screen rectangle), on the windows of `spare`, which cover
+    /// the monitor. The flight takes off once [`Flight::aim`] gives it its slot.
     ///
     /// `from` is the whole window, invisible borders included, where its live
     /// thumbnail goes; `frame` is the part that showed on screen, which the
     /// genie copies and flies (the work area for a maximized window, so no
     /// strip of the menu bar or desktop around it comes along).
     pub fn start(
-        gfx: &Gfx,
+        mut spare: Spare,
         hwnd: isize,
         from: RECT,
         frame: RECT,
-        screen: RECT,
         seconds: f32,
         edge: DockEdge,
     ) -> Option<Self> {
+        let screen = spare.screen;
         let turn = Turn::new(edge, screen);
         // A timed-out GDI call cannot be cancelled safely. Keep at most one
         // outstanding copy, including a worker whose overlay was abandoned.
@@ -629,87 +858,65 @@ impl Flight {
         }
         // The stand-in has a window of its own, under the strips: DWM draws a
         // thumbnail over everything else in its window, and there it would
-        // hide the first frames of the flight.
-        let stand = create_window(screen)?;
-        let Some((overlay, target, root)) = create_overlay(gfx, screen) else {
-            // SAFETY: Our own window, destroyed once.
-            unsafe {
-                let _ = DestroyWindow(stand);
+        // hide the first frames of the flight. Normally it is already up
+        // (see `Spare`); on any early return below, dropping `spare` cleans up.
+        let parts = spare.parts.as_mut()?;
+        let (thumbnail, changed) = parts.set(hwnd, from, true, screen)?;
+        // SAFETY: Our own live windows.
+        unsafe {
+            if changed {
+                // The window has already vanished. Without the flush, DWM
+                // applied the new thumbnail properties a frame late much more
+                // often (measured about 1 in 3, against 1 in 12 with it).
+                let _ = DwmFlush();
             }
-            return None;
-        };
-        if turn.apply(&root).is_err() {
-            // SAFETY: Our own windows, destroyed once.
-            unsafe {
-                let _ = DestroyWindow(stand);
-                let _ = DestroyWindow(overlay);
-            }
-            return None;
-        }
-        // SAFETY: Both are the live windows created above; they are destroyed
-        // here on failure, or by `Drop`.
-        let thumbnail = unsafe {
-            let Ok(thumbnail) = DwmRegisterThumbnail(stand, HWND(hwnd as *mut _)) else {
-                let _ = DestroyWindow(stand);
-                let _ = DestroyWindow(overlay);
-                return None;
-            };
-            // The stand-in: the whole window, exactly where it was.
-            let properties = DWM_THUMBNAIL_PROPERTIES {
-                dwFlags: DWM_TNP_RECTDESTINATION
-                    | DWM_TNP_VISIBLE
-                    | DWM_TNP_OPACITY
-                    | DWM_TNP_SOURCECLIENTAREAONLY,
-                rcDestination: RECT {
-                    left: from.left - screen.left,
-                    top: from.top - screen.top,
-                    right: from.right - screen.left,
-                    bottom: from.bottom - screen.top,
-                },
-                opacity: 255,
-                fVisible: true.into(),
-                fSourceClientAreaOnly: false.into(),
-                ..Default::default()
-            };
-            let _ = DwmUpdateThumbnailProperties(thumbnail, &properties);
-            let _ = ShowWindow(overlay, SW_SHOWNOACTIVATE);
+            // The overlay goes on top only now; the stand-in then goes right
+            // under it, above any other topmost window.
+            let _ = ShowWindow(parts.overlay, SW_SHOWNOACTIVATE);
             let _ = SetWindowPos(
-                stand,
-                Some(overlay),
+                parts.stand,
+                Some(parts.overlay),
                 0,
                 0,
                 0,
                 0,
                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW,
             );
-            thumbnail
-        };
+        }
+        turn.apply(&parts.root).ok()?;
         // Copying the screen takes 30-80 ms however small the rectangle, so it
         // runs on a worker from the first moment instead of holding the dock.
         // GDI reads what DWM composes next, and that includes the stand-in.
         let (sender, shot) = channel();
-        let capture = thread::Builder::new()
+        thread::Builder::new()
             .name("harbor-capture".into())
             .spawn(move || {
-                let _permit = capture_permit;
-                let shot = screen::capture(visible).map(|image| {
-                    let image = turn.image(image);
-                    Captured {
-                        restore: halved(&image),
-                        image,
-                    }
-                });
-                let _ = sender.send(shot);
-            });
-        if capture.is_err() {
-            // SAFETY: These resources were created for this failed flight.
-            unsafe {
-                let _ = DwmUnregisterThumbnail(thumbnail);
-                let _ = DestroyWindow(stand);
-                let _ = DestroyWindow(overlay);
-            }
-            return None;
-        }
+                let captured = screen::capture(visible);
+                // 擷取完就放行下一次擷取，縮小還原用快照不必佔著名額。
+                drop(capture_permit);
+                let Some(image) = captured else {
+                    let _ = sender.send(None);
+                    return;
+                };
+                let image = turn.image(image);
+                // 動畫只等擷取本身：縮小快照（debug build 要 100-600 ms，
+                // 視窗越大越久）放到送出之後，否則神燈起飛前會停頓一下。
+                let (restore_sender, restore) = channel();
+                let _ = sender.send(Some(Captured {
+                    image: image.clone(),
+                    restore,
+                }));
+                let _ = restore_sender.send(halved(&image));
+            })
+            .ok()?;
+        // From here on the flight owns the windows and the thumbnail.
+        let Parts {
+            stand,
+            overlay,
+            target,
+            root,
+            ..
+        } = spare.parts.take()?;
         let window = turn.edges(local(visible, screen));
         Some(Self {
             hwnd,
@@ -907,6 +1114,12 @@ impl Flight {
         }
     }
 
+    /// 這趟是從 dock 飛出來還原。
+    #[must_use]
+    pub fn is_restoring(&self) -> bool {
+        self.restoring
+    }
+
     #[must_use]
     pub fn needs_aim(&self) -> bool {
         !self.aimed
@@ -936,7 +1149,11 @@ impl Flight {
     /// with the genie later.
     pub fn take_snapshot_for_restore(&mut self) -> Option<Snapshot> {
         let edge = self.turn.edge;
-        self.captured.take().map(|(image, window)| Snapshot {
+        let (restore, window) = self.captured.take()?;
+        // 飛行結束時縮小早就做完；極少數還沒好（很大的視窗）就稍等一下，
+        // 最多 100 ms，等不到就放棄這張快照（下次還原沒有神燈，但不卡住）。
+        let image = restore.recv_timeout(Duration::from_millis(100)).ok()?;
+        Some(Snapshot {
             image,
             window,
             edge,
@@ -1187,12 +1404,13 @@ mod native_tests {
             right: 250,
             bottom: 170,
         };
+        let spare = Spare::new(&gfx, screen)
+            .ok_or_else(|| anyhow::anyhow!("could not create the stand-in windows"))?;
         let mut flight = Flight::start(
-            &gfx,
+            spare,
             source.0.0 as isize,
             from,
             from,
-            screen,
             0.5,
             DockEdge::Bottom,
         )
