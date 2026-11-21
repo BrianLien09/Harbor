@@ -340,28 +340,118 @@ pub fn battery() -> Option<Battery> {
         })
 }
 
-/// Current date and time in the regional format of the user, e.g. "vie 13 nov  19:42".
+/// 選單列時鐘：「年/月/日 (星期) 12 小時制時間」，例如繁中「2026/11/21 (六) 下午 11:03」、
+/// 英文「2026/11/21 (Sa) 11:03 PM」。
+///
+/// 日期刻意用固定的 `yyyy/M/d`，不跟地區的長日期走：使用者要的是數字日期，
+/// 而月份名稱在不同語系寬度差很多。星期與上午／下午仍取自地區設定，所以文字會在地化。
 #[must_use]
 pub fn clock_text() -> String {
-    use windows::Win32::Globalization::{GetDateFormatEx, GetTimeFormatEx, TIME_NOSECONDS};
-    let mut date = [0u16; 64];
+    use windows::Win32::{
+        Globalization::{
+            GetDateFormatEx, GetLocaleInfoEx, GetTimeFormatEx, LOCALE_SSHORTESTDAYNAME1,
+            LOCALE_STIMEFORMAT, TIME_FORMAT_FLAGS,
+        },
+        System::SystemInformation::GetLocalTime,
+    };
+    // 只取一次時間，日期、星期、時刻都用它，避免剛好跨日時三者不一致。
+    // SAFETY: 純讀取的查詢。
+    let now = unsafe { GetLocalTime() };
+    let mut date = [0u16; 32];
+    let mut weekday = [0u16; 16];
+    let mut pattern = [0u16; 80];
     let mut time = [0u16; 32];
-    // SAFETY: The buffers live for the calls, which return the length written
-    // including the terminator (0 on failure).
-    let (date_len, time_len) = unsafe {
+    // SAFETY: 緩衝區在呼叫期間都有效；呼叫回傳寫入長度（含結尾 0），失敗回傳 0。
+    let (date_len, weekday_len, pattern_len) = unsafe {
         (
             GetDateFormatEx(
-                None,
+                PCWSTR::null(),
                 Default::default(),
-                None,
-                w!("ddd d MMM"),
+                Some(&now),
+                w!("yyyy/M/d"),
                 Some(&mut date),
-                None,
+                PCWSTR::null(),
             ),
-            GetTimeFormatEx(None, TIME_NOSECONDS, None, None, Some(&mut time)),
+            // Windows 的 SSHORTESTDAYNAME1 是星期一，wDayOfWeek 的 0 是星期日。
+            GetLocaleInfoEx(
+                PCWSTR::null(),
+                LOCALE_SSHORTESTDAYNAME1 + (u32::from(now.wDayOfWeek) + 6) % 7,
+                Some(&mut weekday),
+            ),
+            GetLocaleInfoEx(PCWSTR::null(), LOCALE_STIMEFORMAT, Some(&mut pattern)),
         )
     };
     let text =
         |buffer: &[u16], len: i32| String::from_utf16_lossy(&buffer[..(len - 1).max(0) as usize]);
-    format!("{}  {}", text(&date, date_len), text(&time, time_len))
+    // 強制 12 小時制，但上午／下午的位置照地區習慣：繁中、日韓放前面，英文放後面。
+    let format = if am_pm_first(&text(&pattern, pattern_len)) {
+        w!("tt h:mm")
+    } else {
+        w!("h:mm tt")
+    };
+    // SAFETY: 同上，緩衝區在呼叫期間有效。
+    let time_len = unsafe {
+        GetTimeFormatEx(
+            PCWSTR::null(),
+            TIME_FORMAT_FLAGS(0),
+            Some(&now),
+            format,
+            Some(&mut time),
+        )
+    };
+    compose_clock(
+        &text(&date, date_len),
+        &text(&weekday, weekday_len),
+        &text(&time, time_len),
+    )
+}
+
+/// 地區時間格式裡，上午／下午標記（`t`）是否排在小時（`h`/`H`）前面。
+/// 地區格式本身沒有標記（24 小時制語系）時照英文習慣放後面。
+fn am_pm_first(pattern: &str) -> bool {
+    match (pattern.find('t'), pattern.find(['h', 'H'])) {
+        (Some(marker), Some(hour)) => marker < hour,
+        _ => false,
+    }
+}
+
+/// 組合時鐘文字；拆出來是為了不呼叫 Windows 也能測試格式。
+/// 取不到星期名稱時省略括號，不顯示空的「()」。
+fn compose_clock(date: &str, weekday: &str, time: &str) -> String {
+    if weekday.is_empty() {
+        format!("{date} {time}")
+    } else {
+        format!("{date} ({weekday}) {time}")
+    }
+}
+
+#[cfg(test)]
+mod clock_tests {
+    use super::{am_pm_first, clock_text, compose_clock};
+
+    #[test]
+    fn composes_date_weekday_and_time() {
+        assert_eq!(
+            compose_clock("2026/11/21", "六", "下午 11:03"),
+            "2026/11/21 (六) 下午 11:03"
+        );
+        assert_eq!(compose_clock("2026/11/21", "", "11:03 PM"), "2026/11/21 11:03 PM");
+    }
+
+    #[test]
+    fn places_am_pm_like_the_region() {
+        // 繁中預設「tt hh:mm:ss」、英文「h:mm:ss tt」、德文 24 小時制「HH:mm:ss」。
+        assert!(am_pm_first("tt hh:mm:ss"));
+        assert!(!am_pm_first("h:mm:ss tt"));
+        assert!(!am_pm_first("HH:mm:ss"));
+    }
+
+    #[test]
+    fn live_clock_starts_with_numeric_date() {
+        let text = clock_text();
+        let date = text.split(' ').next().unwrap_or_default();
+        let parts: Vec<&str> = date.split('/').collect();
+        assert_eq!(parts.len(), 3, "{text}");
+        assert!(parts.iter().all(|part| part.parse::<u32>().is_ok()), "{text}");
+    }
 }
