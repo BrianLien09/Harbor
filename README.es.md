@@ -130,7 +130,7 @@ pnpm build
 | `crates/harbor-core` | Lógica de disposición y animación, independiente de la plataforma |
 | `crates/harbor-shell` | Integración con el shell de Windows |
 | `crates/harbor-config` | Ajustes compartidos y su guardado |
-| `harbor/` | La web (Astro) |
+| `site/` | La web (Astro) |
 
 ## Privacidad
 

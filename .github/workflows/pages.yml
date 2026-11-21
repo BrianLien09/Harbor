@@ -1,12 +1,12 @@
 name: Pages
 
-# 推送到 main 且網站內容有變動時，把 harbor/ 建置後部署到 GitHub Pages。
+# 推送到 main 且網站內容有變動時，把 site/ 建置後部署到 GitHub Pages。
 # 第一次使用需到 Settings → Pages，把 Source 設為「GitHub Actions」。
 on:
   push:
     branches: [main]
     paths:
-      - 'harbor/**'
+      - 'site/**'
       - 'CHANGELOG.md'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
@@ -32,16 +32,16 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-          cache-dependency-path: harbor/pnpm-lock.yaml
+          cache-dependency-path: site/pnpm-lock.yaml
       - name: Install dependencies
-        working-directory: harbor
+        working-directory: site
         run: pnpm install --frozen-lockfile
       - name: Build
-        working-directory: harbor
+        working-directory: site
         run: pnpm build
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: harbor/dist
+          path: site/dist
 
   deploy:
     needs: build

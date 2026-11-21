@@ -11,7 +11,7 @@ export interface Release {
   changes: string[];
 }
 
-/** The site builds from `harbor/`, so the repository CHANGELOG sits one level up. */
+/** The site builds from `site/`, so the repository CHANGELOG sits one level up. */
 const CHANGELOG_PATH = resolve(process.cwd(), "../CHANGELOG.md");
 
 const escapeHtml = (text: string) =>

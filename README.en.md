@@ -133,7 +133,7 @@ pnpm build
 | `crates/harbor-core` | Platform-independent layout and animation logic |
 | `crates/harbor-shell` | Windows shell integration |
 | `crates/harbor-config` | Shared settings and persistence |
-| `harbor` | Astro website |
+| `site` | Astro website |
 
 ## Privacy
 

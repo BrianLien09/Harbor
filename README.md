@@ -122,7 +122,7 @@ pnpm build
 | `crates/harbor-core` | 與平台無關的版面配置與動畫邏輯 |
 | `crates/harbor-shell` | Windows Shell 整合 |
 | `crates/harbor-config` | 共用設定與持久化 |
-| `harbor` | Astro 網站 |
+| `site` | Astro 網站 |
 
 ## 隱私權
 
