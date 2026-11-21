@@ -1,14 +1,12 @@
 name: Release
 
-# Push a tag matching the workspace version (for example v0.1.0) to build the
-# signed installer and attach it to a draft release. Review the draft on GitHub
-# and publish it by hand: only published releases reach the website download
-# link and the in-app updater.
+# 推一個和工作區版本相同的 tag（例如 v0.1.19）就會建置安裝檔並直接發布 Release。
+# 只給自己與親友使用，所以不做 Windows 程式碼簽章：第一次執行時 SmartScreen
+# 會提示，選「其他資訊 → 仍要執行」即可。updater 簽章（.sig）仍保留，
+# 因為少了它 app 內自動更新會拒絕安裝新版。
 on:
   push:
     tags: ['v*']
-  # Manual runs exercise test-signing only, with no release or updater output.
-  workflow_dispatch:
 
 permissions:
   contents: write
@@ -22,6 +20,9 @@ jobs:
   installer:
     needs: check
     runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -34,181 +35,29 @@ jobs:
           cache-dependency-path: apps/settings/pnpm-lock.yaml
       - uses: Swatinem/rust-cache@v2
 
-      - name: Select signing lane and validate release configuration
-        shell: pwsh
-        env:
-          SIGNPATH_ORGANIZATION_ID: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
-          SIGNPATH_PROJECT_SLUG: ${{ vars.SIGNPATH_PROJECT_SLUG }}
-          SIGNPATH_SIGNING_POLICY_SLUG: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
-          SIGNPATH_PRODUCTION_CERTIFICATE_THUMBPRINT: ${{ vars.SIGNPATH_PRODUCTION_CERTIFICATE_THUMBPRINT }}
-          SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+      # tag 與 Cargo 版本不一致時提早失敗，避免發出版本號錯亂的 Release。
+      - name: Check the tag matches the workspace version
         run: |
           $version = (cargo metadata --format-version 1 --no-deps | ConvertFrom-Json).packages |
             Where-Object name -eq 'harbor' | Select-Object -ExpandProperty version
-          $lane = ./scripts/Get-ReleaseSigningMode.ps1 -EventName $env:GITHUB_EVENT_NAME `
-            -Version $version -RefName $env:GITHUB_REF_NAME `
-            -Organization $env:SIGNPATH_ORGANIZATION_ID -Project $env:SIGNPATH_PROJECT_SLUG `
-            -Policy $env:SIGNPATH_SIGNING_POLICY_SLUG `
-            -ProductionThumbprint $env:SIGNPATH_PRODUCTION_CERTIFICATE_THUMBPRINT `
-            -TokenPresent ([bool]$env:SIGNPATH_API_TOKEN)
-          "VERSION=$($lane.Version)" >> $env:GITHUB_ENV
-          "SIGNING_MODE=$($lane.Mode)" >> $env:GITHUB_ENV
-          "SIGNING_POLICY=$($lane.Policy)" >> $env:GITHUB_ENV
-          Write-Host "Signing lane: $($lane.Mode)"
+          if ("v$version" -ne $env:GITHUB_REF_NAME) {
+            throw "Tag $env:GITHUB_REF_NAME does not match workspace version $version"
+          }
+          "VERSION=$version" >> $env:GITHUB_ENV
 
       - name: Install settings dependencies
         working-directory: apps/settings
         run: pnpm install --frozen-lockfile
 
+      # 有 TAURI_SIGNING_PRIVATE_KEY 時會一併產生 updater 用的 .sig。
       - name: Build installer
-        shell: pwsh
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ env.SIGNING_MODE != 'Test' && secrets.TAURI_SIGNING_PRIVATE_KEY || '' }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ env.SIGNING_MODE != 'Test' && secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD || '' }}
-        run: ./scripts/build-installer.ps1
-
-      # Windows code signing through SignPath Foundation (FIRMA-DE-CODIGO.md).
-      # Tag pushes without SignPath remain unsigned, as before. Manual runs
-      # are isolated test builds; configured tags require production. Two requests,
-      # approved by hand in SignPath: first the two programs, then the
-      # installer rebuilt around them. The installer must be signed before the
-      # updater signature (.sig) is made, or the updater rejects it.
-      - name: Collect the programs to sign
-        if: env.SIGNING_MODE != 'Unsigned'
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force sign/binaries | Out-Null
-          Copy-Item target/release/harbor-settings.exe sign/binaries/
-          Copy-Item apps/settings/src-tauri/binaries/harbor-x86_64-pc-windows-msvc.exe sign/binaries/harbor.exe
-
-      - name: Upload the programs to sign
-        if: env.SIGNING_MODE != 'Unsigned'
-        id: unsigned-binaries
-        uses: actions/upload-artifact@v7
-        with:
-          name: unsigned-binaries
-          path: sign/binaries
-
-      - name: Sign the programs
-        if: env.SIGNING_MODE != 'Unsigned'
-        uses: signpath/github-action-submit-signing-request@v3
-        with:
-          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
-          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
-          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
-          signing-policy-slug: ${{ env.SIGNING_POLICY }}
-          artifact-configuration-slug: binaries
-          github-artifact-id: ${{ steps.unsigned-binaries.outputs.artifact-id }}
-          wait-for-completion: true
-          # Leaves time to approve the request in SignPath.
-          wait-for-completion-timeout-in-seconds: 3600
-          output-artifact-directory: sign/binaries-signed
-
-      - name: Verify both signed programs
-        if: env.SIGNING_MODE != 'Unsigned'
-        shell: pwsh
-        env:
-          PRODUCTION_THUMBPRINT: ${{ vars.SIGNPATH_PRODUCTION_CERTIFICATE_THUMBPRINT }}
-        run: |
-          ./scripts/Assert-Authenticode.ps1 -Mode $env:SIGNING_MODE `
-            -ProductionThumbprint $env:PRODUCTION_THUMBPRINT -ReportDirectory sign/verification-binaries `
-            -Path sign/binaries-signed/harbor.exe,sign/binaries-signed/harbor-settings.exe
-
-      # Tauri marks the settings program while bundling; it is already marked
-      # from the first build, so bundling again keeps the signature intact
-      # (checked locally with a test certificate).
-      - name: Rebuild the installer around the signed programs
-        if: env.SIGNING_MODE != 'Unsigned'
-        shell: pwsh
-        env:
-          PRODUCTION_THUMBPRINT: ${{ vars.SIGNPATH_PRODUCTION_CERTIFICATE_THUMBPRINT }}
-        run: |
-          Copy-Item sign/binaries-signed/harbor-settings.exe target/release/ -Force
-          Copy-Item sign/binaries-signed/harbor.exe apps/settings/src-tauri/binaries/harbor-x86_64-pc-windows-msvc.exe -Force
-          '{ "bundle": { "createUpdaterArtifacts": false } }' | Set-Content -Encoding ascii no-updater.json
-          Push-Location apps/settings
-          pnpm tauri bundle --bundles nsis --config src-tauri/tauri.bundle.conf.json --config ../../no-updater.json
-          if ($LASTEXITCODE) { throw 'tauri bundle failed' }
-          Pop-Location
-          ./scripts/Assert-Authenticode.ps1 -Mode $env:SIGNING_MODE `
-            -ProductionThumbprint $env:PRODUCTION_THUMBPRINT -ReportDirectory sign/verification-bundled `
-            -Path target/release/harbor-settings.exe,apps/settings/src-tauri/binaries/harbor-x86_64-pc-windows-msvc.exe
-          New-Item -ItemType Directory -Force sign/installer | Out-Null
-          Copy-Item "target/release/bundle/nsis/Harbor_${env:VERSION}_x64-setup.exe" sign/installer/Harbor-Setup.exe
-
-      - name: Upload the installer to sign
-        if: env.SIGNING_MODE != 'Unsigned'
-        id: unsigned-installer
-        uses: actions/upload-artifact@v7
-        with:
-          name: unsigned-installer
-          path: sign/installer
-
-      - name: Sign the installer
-        if: env.SIGNING_MODE != 'Unsigned'
-        uses: signpath/github-action-submit-signing-request@v3
-        with:
-          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
-          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
-          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
-          signing-policy-slug: ${{ env.SIGNING_POLICY }}
-          artifact-configuration-slug: installer
-          github-artifact-id: ${{ steps.unsigned-installer.outputs.artifact-id }}
-          wait-for-completion: true
-          wait-for-completion-timeout-in-seconds: 3600
-          output-artifact-directory: sign/installer-signed
-
-      - name: Verify and use the signed installer
-        if: env.SIGNING_MODE != 'Unsigned'
-        shell: pwsh
-        env:
-          PRODUCTION_THUMBPRINT: ${{ vars.SIGNPATH_PRODUCTION_CERTIFICATE_THUMBPRINT }}
-        run: |
-          $setup = (Resolve-Path "target/release/bundle/nsis").Path + "/Harbor_${env:VERSION}_x64-setup.exe"
-          Copy-Item sign/installer-signed/Harbor-Setup.exe $setup -Force
-          ./scripts/Assert-Authenticode.ps1 -Mode $env:SIGNING_MODE `
-            -ProductionThumbprint $env:PRODUCTION_THUMBPRINT -ReportDirectory sign/verification-installer -Path $setup
-
-      - name: Sign the final production installer for the updater
-        if: env.SIGNING_MODE == 'Production'
-        shell: pwsh
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: |
-          $setup = (Resolve-Path "target/release/bundle/nsis").Path + "/Harbor_${env:VERSION}_x64-setup.exe"
-          Push-Location apps/settings
-          pnpm tauri signer sign --app-version $env:VERSION $setup
-          if ($LASTEXITCODE) { throw 'tauri signer sign failed' }
-          Pop-Location
+        run: ./scripts/build-installer.ps1
 
-      - name: Keep signing artifacts and diagnostics
-        if: always() && env.SIGNING_MODE != '' && env.SIGNING_MODE != 'Unsigned'
-        uses: actions/upload-artifact@v7
-        with:
-          name: signpath-${{ env.SIGNING_MODE }}-${{ env.VERSION }}
-          path: |
-            sign/binaries-signed/
-            sign/installer-signed/
-            sign/verification-*/
-          retention-days: 14
-          if-no-files-found: warn
-
-      - name: Explain the test result
-        if: always() && env.SIGNING_MODE == 'Test'
-        shell: pwsh
-        run: |
-          @'
-          SignPath test lane only. No draft release, latest.json or updater signature is produced.
-          Review the verification steps and the signpath-Test artifact, including signature-report.json.
-          If a signature remains invalid, send its status/message and the signing request IDs to SignPath support.
-          '@ >> $env:GITHUB_STEP_SUMMARY
-
-      # latest.json is what the in-app updater reads; Harbor-Setup.exe is a
-      # stable name for the website's "latest" download link.
+      # latest.json 給 app 內 updater 讀；Harbor-Setup.exe 是官網「最新版」下載連結用的固定檔名。
       - name: Prepare release files
-        if: env.SIGNING_MODE != 'Test'
-        shell: pwsh
         run: |
           $nsis = 'target/release/bundle/nsis'
           $setup = "Harbor_${env:VERSION}_x64-setup.exe"
@@ -231,8 +80,7 @@ jobs:
           Copy-Item "$nsis/$setup.sig" upload/
           Copy-Item "$nsis/$setup" upload/Harbor-Setup.exe
 
-          # The release text is this version's section of CHANGELOG.md (English
-          # and Spanish), between its heading and the next one.
+          # Release 說明取自 CHANGELOG.md 中這個版本的段落（標題到下一個標題之間）。
           $lines = Get-Content CHANGELOG.md
           $start = [array]::IndexOf($lines, "## [$env:VERSION]")
           if ($start -lt 0) { throw "CHANGELOG.md has no section for $env:VERSION" }
@@ -241,11 +89,10 @@ jobs:
           $section = if ($end) { $rest[0..($end - 2)] } else { $rest }
           $section | Set-Content -Encoding utf8NoBOM notes.md
 
-      - name: Create draft release
-        if: env.SIGNING_MODE != 'Test'
-        shell: pwsh
+      # 直接發布（不留草稿），官網下載連結與 app 內更新會立刻拿到新版。
+      - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create $env:GITHUB_REF_NAME (Get-ChildItem upload).FullName `
-            --draft --notes-file notes.md --title "Harbor $env:GITHUB_REF_NAME"
+            --notes-file notes.md --title "Harbor $env:GITHUB_REF_NAME"
