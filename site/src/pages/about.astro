@@ -11,7 +11,7 @@ import { absoluteUrl, withBase } from "@/lib/url";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import "@/styles/showcase.css";
 
-const description = `Harbor is a free, open-source macOS-style dock for Windows, maintained by ${author.name}, and based on ${upstream.name} by ${upstream.organization}.`;
+const description = `Harbor is a free, open-source macOS-style dock for Windows, maintained by ${author.name}.`;
 const canonical = absoluteUrl("/about");
 
 const makerLinks = [{ label: "GitHub", href: author.github }];
@@ -59,8 +59,8 @@ const schema = [
         <p class="intro-eyebrow">About</p>
         <h1 class="intro-title">Built in the open.</h1>
         <p class="intro-lead">
-          Harbor is a free dock for Windows that feels like the one on a Mac. It is a fork of Muelle, whose name is the
-          Spanish word for a dock where boats come in.
+          Harbor is a free dock for Windows that feels like the one on a Mac. It runs on Windows 10 and 11, is written
+          in Rust, and comes with a Traditional Chinese interface.
         </p>
       </header>
 
@@ -83,8 +83,8 @@ const schema = [
             </div>
           </div>
           <p>
-            Harbor is a personal fork of Muelle that adds a Traditional Chinese interface and keeps the dock, the
-            Settings app and the website in sync with the original.
+            Harbor is maintained by one developer. The dock, the menu bar with AI usage limits, the Settings app and this
+            website are developed together, with a Traditional Chinese interface from the start.
           </p>
           <ul class="about-links">
             {
@@ -100,28 +100,6 @@ const schema = [
           </ul>
         </article>
 
-        <article class="about-card" data-r>
-          <p class="about-label">Based on</p>
-          <h2>{upstream.name}</h2>
-          <p>
-            Harbor is built on {upstream.name}, an MIT-licensed project by {upstream.author} and {upstream.organization}.
-            The original design, code and icons belong to them.
-          </p>
-          <ul class="about-links">
-            <li>
-              <a href={upstream.repository} target="_blank" rel="noopener noreferrer">
-                {upstream.name} on GitHub
-                <Icon name="arrow-up-right" size={12} />
-              </a>
-            </li>
-            <li>
-              <a href={upstream.organizationUrl} target="_blank" rel="noopener noreferrer">
-                {upstream.organization}
-                <Icon name="arrow-up-right" size={12} />
-              </a>
-            </li>
-          </ul>
-        </article>
       </section>
 
       <section class="about-card about-open" aria-labelledby="open-source" data-r>
@@ -131,6 +109,10 @@ const schema = [
           <p>
             All of Harbor is on GitHub under the {site.license} license. You can build the installer from source, read
             exactly what it sends over the network, and send a fix. Community pull requests already ship in releases.
+          </p>
+          <p>
+            Harbor started from <a href={upstream.repository} target="_blank" rel="noopener noreferrer" class="about-inline">{upstream.name}</a>,
+            an MIT-licensed project by {upstream.organization}. The original copyright notice is kept in the LICENSE file.
           </p>
           <div class="about-actions">
             <Button href={site.repository}>
@@ -169,7 +151,8 @@ const schema = [
 
   .about-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    /* 只剩作者一張卡片，改為單欄避免右側留白 */
+    grid-template-columns: minmax(0, 1fr);
     gap: 20px;
     margin-top: 88px;
   }
@@ -262,6 +245,13 @@ const schema = [
     font-weight: 600;
   }
   .about-secondary:hover {
+    color: var(--color-signal);
+  }
+  .about-inline {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+  .about-inline:hover {
     color: var(--color-signal);
   }
   .about-facts {

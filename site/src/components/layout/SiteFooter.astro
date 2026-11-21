@@ -5,7 +5,7 @@ import logo from "@/assets/brand/harbor-logo.webp";
 import Container from "@/components/layout/Container.astro";
 import Icon from "@/components/ui/Icon.astro";
 import { footerGroups } from "@/data/navigation";
-import { author, site, upstream } from "@/data/site";
+import { author, site } from "@/data/site";
 ---
 
 <footer class="mt-[100px] border-t border-line">
@@ -48,9 +48,8 @@ import { author, site, upstream } from "@/data/site";
     <div class="mt-12 flex flex-wrap justify-between gap-3 border-t border-line pt-5 text-[13px] text-mute">
       <span>© 2026 {site.name}. Independent project; not affiliated with Apple, Microsoft or the listed AI providers.</span>
       <span>
-        Made by <a href={author.profile} class="text-fg underline-offset-4 hover:text-signal hover:underline">{author.shortName}</a>
-        Based on <a href={upstream.repository} class="text-fg underline-offset-4 hover:text-signal hover:underline">{upstream.name}</a>
-        by {upstream.organization}. Open source, built in Rust.
+        Made by <a href={author.profile} class="text-fg underline-offset-4 hover:text-signal hover:underline">{author.shortName}</a>.
+        Open source, built in Rust.
       </span>
     </div>
   </Container>
