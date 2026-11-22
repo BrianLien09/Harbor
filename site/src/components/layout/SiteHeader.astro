@@ -1,7 +1,7 @@
 ---
 import { withBase } from "@/lib/url";
 import { Image } from "astro:assets";
-import logo from "@/assets/brand/harbor-logo.webp";
+import icon from "@/assets/brand/harbor-icon.webp";
 import Container from "@/components/layout/Container.astro";
 import Button from "@/components/ui/Button.astro";
 import Icon from "@/components/ui/Icon.astro";
@@ -11,12 +11,14 @@ import { site } from "@/data/site";
 
 <header class="sticky top-0 z-50 border-b border-line bg-bg/85 backdrop-blur-xl">
   <Container class="flex h-14 items-center justify-between gap-4">
-    <a href={withBase("/")} aria-label={`${site.name} home`} class="flex shrink-0 items-center">
-      <Image src={logo} alt={site.name} class="w-50" />
+    <a href={withBase("/")} aria-label={`${site.name} 首頁`} class="flex shrink-0 items-center">
+      {/* 原本的文字 logo 圖檔拼的是上游的 MUELLE，改用 app 圖示加 HTML 文字，名稱就不會再和專案不一致 */}
+      <Image src={icon} alt="" width={32} height={32} class="size-8" />
+      <span class="ml-2 text-lg font-extrabold tracking-[-0.03em]">{site.name}</span>
     </a>
 
     <nav
-      aria-label="Sections"
+      aria-label="頁面區段"
       class="hidden items-center gap-7 font-mono text-[12px] tracking-[0.08em] text-mute uppercase md:flex"
     >
       {
@@ -36,13 +38,13 @@ import { site } from "@/data/site";
         href={site.repository}
         target="_blank"
         rel="noopener noreferrer"
-        aria-label={`${site.name} on GitHub`}
+        aria-label={`GitHub 上的 ${site.name}`}
         class="squircle-pill p-2 text-fg/80 transition-colors hover:bg-card hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       >
         <Icon name="github" size={20} />
       </a>
       <Button href={site.download} size="sm" class="ml-1 max-sm:hidden">
-        Download
+        下載
         <Icon name="arrow-right" size={16} />
       </Button>
       <button
@@ -50,7 +52,7 @@ import { site } from "@/data/site";
         data-menu-button
         aria-expanded="false"
         aria-controls="mobile-menu"
-        aria-label="Open menu"
+        aria-label="開啟選單"
         class="ml-1 squircle-pill p-2 text-fg transition-colors hover:bg-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary md:hidden"
       >
         <Icon name="menu" size={20} class="icon-menu" />
@@ -72,7 +74,7 @@ import { site } from "@/data/site";
         ))
       }
       <Button href={site.download} class="mt-3">
-        Download for Windows
+        下載 Windows 版
         <Icon name="arrow-right" size={18} />
       </Button>
     </Container>
@@ -88,7 +90,7 @@ import { site } from "@/data/site";
   if (button && panel) {
     const setOpen = (open: boolean) => {
       button.setAttribute("aria-expanded", String(open));
-      button.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+      button.setAttribute("aria-label", open ? "關閉選單" : "開啟選單");
       panel.hidden = !open;
       menuIcon?.classList.toggle("hidden", open);
       closeIcon?.classList.toggle("hidden", !open);

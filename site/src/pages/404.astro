@@ -6,19 +6,19 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
 ---
 
 <BaseLayout
-  title="Page not found - Harbor"
-  description="This page does not exist. Go back to the Harbor home page."
+  title="找不到頁面 - Harbor"
+  description="這個頁面不存在，請回到 Harbor 首頁。"
   noindex
 >
   <main id="main" class="flex min-h-screen items-center">
     <Container class="text-center">
       <p class="font-mono text-[11px] tracking-[0.08em] text-mute uppercase">404</p>
-      <h1 class="mt-3 text-[clamp(2rem,5vw,3.5rem)]">This page left the dock.</h1>
+      <h1 class="mt-3 text-[clamp(2rem,5vw,3.5rem)]">這個頁面離開 Dock 了。</h1>
       <p class="mx-auto mt-4 max-w-md text-mute">
-        The link is broken or the page moved. Everything about Harbor is on the home page.
+        連結可能失效或頁面已搬家。Harbor 的所有資訊都在首頁。
       </p>
       <div class="mt-8 flex justify-center">
-        <Button href={withBase("/")}>Back to Harbor</Button>
+        <Button href={withBase("/")}>回到 Harbor</Button>
       </div>
     </Container>
   </main>

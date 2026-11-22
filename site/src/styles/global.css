@@ -1,8 +1,10 @@
 @import "tailwindcss";
 
 @theme inline {
-  --font-sans: var(--font-jakarta), system-ui, sans-serif;
-  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+  /* Jakarta 只載入 latin 子集，中文字會落到後面的字型；
+     明確列出各平台的繁中字型，避免瀏覽器挑到簡體字形或日文字形。 */
+  --font-sans: var(--font-jakarta), "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, "Microsoft JhengHei", "Noto Sans TC", monospace;
 }
 
 @theme {

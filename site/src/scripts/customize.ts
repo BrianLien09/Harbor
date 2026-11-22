@@ -17,6 +17,17 @@ const DEMO_MS = 1400;
 const ICON_GAP = 6;
 
 type Strings = Record<string, string>;
+type Lang = "zh" | "en" | "es";
+
+/** 「自動」依瀏覽器語系挑選；中文以外只認得西班牙文與英文，其餘一律退回英文，與 app 的行為一致。 */
+const detectLang = (): Lang => {
+  const browser = navigator.language.toLowerCase();
+  if (browser.startsWith("zh")) return "zh";
+  if (browser.startsWith("es")) return "es";
+  return "en";
+};
+
+const isLang = (value: string): value is Lang => value === "zh" || value === "en" || value === "es";
 
 /**
  * The Settings replica: switches, sliders, the language picker and the update check
@@ -32,8 +43,8 @@ export function initCustomize(root: HTMLElement) {
   const textNode = root.querySelector<HTMLScriptElement>("[data-settings-text]");
   if (!scene || !preview || !dock || !bar || !textNode) return;
 
-  const texts = JSON.parse(textNode.textContent ?? "{}") as Record<"en" | "es", Strings>;
-  let strings = texts.en;
+  const texts = JSON.parse(textNode.textContent ?? "{}") as Record<Lang, Strings>;
+  let strings = texts.zh;
   const icons = [...dock.querySelectorAll<HTMLImageElement>("img")];
   const ranges = new Map(
     [...scene.querySelectorAll<HTMLInputElement>("input[data-setting]")].map((input) => [
@@ -202,9 +213,9 @@ export function initCustomize(root: HTMLElement) {
 
   const status = scene.querySelector<HTMLElement>("[data-update-status]");
   const setLanguage = (choice: string) => {
-    const resolved = choice === "auto" ? (navigator.language.toLowerCase().startsWith("es") ? "es" : "en") : choice;
-    strings = texts[resolved === "es" ? "es" : "en"];
-    scene.lang = resolved === "es" ? "es" : "en";
+    const resolved: Lang = isLang(choice) ? choice : detectLang();
+    strings = texts[resolved];
+    scene.lang = resolved === "zh" ? "zh-Hant-TW" : resolved;
     scene.querySelectorAll<HTMLElement>("[data-t]").forEach((node) => {
       const text = strings[node.dataset.t ?? ""];
       if (text) node.textContent = text;

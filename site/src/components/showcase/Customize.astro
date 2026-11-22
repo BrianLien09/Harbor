@@ -16,7 +16,7 @@ import {
 } from "@/data/showcase";
 import "@/styles/showcase.css";
 
-const t = settingsText.en;
+const t = settingsText.zh;
 const tx = (key: SettingsKey) => ({ "data-t": key });
 const checked = (on: boolean) => (on ? "true" : "false");
 /** The sections of the Settings app, in its order. */
@@ -29,7 +29,7 @@ const textJson = JSON.stringify(settingsText).replace(/</g, "\\u003c");
   <SectionIntro {...customizeIntro} />
 
   <div class="custom" data-customize data-r>
-    <div class="mac-window settings" role="group" aria-label="Harbor Settings, interactive replica">
+    <div class="mac-window settings" role="group" aria-label="Harbor 設定（可互動的模擬畫面）">
       <aside class="settings-side">
         <div class="mac-lights" aria-hidden="true">
           <i></i>
@@ -176,11 +176,14 @@ const textJson = JSON.stringify(settingsText).replace(/</g, "\\u003c");
                 >
                   {t.languageAuto}
                 </button>
+                <button type="button" role="radio" aria-checked="true" data-lang="zh">
+                  中文
+                </button>
+                <button type="button" role="radio" aria-checked="false" data-lang="en">
+                  English
+                </button>
                 <button type="button" role="radio" aria-checked="false" data-lang="es">
                   Español
-                </button>
-                <button type="button" role="radio" aria-checked="true" data-lang="en">
-                  English
                 </button>
               </span>
             </div>
@@ -205,7 +208,7 @@ const textJson = JSON.stringify(settingsText).replace(/</g, "\\u003c");
       </div>
     </div>
 
-    <div class="preview" data-preview aria-label="Live preview of the dock" role="img">
+    <div class="preview" data-preview aria-label="Dock 即時預覽" role="img">
       <Image
         src={wallpaper}
         alt=""
@@ -214,7 +217,7 @@ const textJson = JSON.stringify(settingsText).replace(/</g, "\\u003c");
         sizes="(min-width: 1024px) 480px, 100vw"
       />
       <div class="preview-bar" data-preview-bar>
-        <b>File Explorer</b>
+        <b>檔案總管</b>
         <span class="preview-island" data-preview-island aria-hidden="true">
           <i style="--ring: #d97757; --p: 63%"></i>63%
           <i style="--ring: #8ab4f8; --p: 28%"></i>28%
@@ -222,10 +225,10 @@ const textJson = JSON.stringify(settingsText).replace(/</g, "\\u003c");
         <span class="preview-bar-status">
           <MenuBarStatus compact accessoryPreview />
           <span class="hidden sm:inline" data-date>
-            Fri, Nov 14
+            11月14日 週五
           </span>
           <span class="tabular-nums" data-clock>
-            9:41 AM
+            上午 9:41
           </span>
         </span>
       </div>

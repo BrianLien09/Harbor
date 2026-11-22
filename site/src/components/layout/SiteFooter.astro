@@ -1,19 +1,21 @@
 ---
 import { withBase } from "@/lib/url";
 import { Image } from "astro:assets";
-import logo from "@/assets/brand/harbor-logo.webp";
+import icon from "@/assets/brand/harbor-icon.webp";
 import Container from "@/components/layout/Container.astro";
 import Icon from "@/components/ui/Icon.astro";
 import { footerGroups } from "@/data/navigation";
-import { author, site } from "@/data/site";
+import { author, site, upstream } from "@/data/site";
 ---
 
 <footer class="mt-[100px] border-t border-line">
   <Container class="py-14">
     <div class="grid gap-10 md:grid-cols-[1.6fr_1fr_1fr_1fr]">
       <div>
-        <a href={withBase("/")} aria-label={`${site.name} home`} class="inline-flex items-center">
-          <Image src={logo} alt={site.name} class="w-54" />
+        <a href={withBase("/")} aria-label={`${site.name} 首頁`} class="inline-flex items-center">
+          {/* 原本的文字 logo 圖檔拼的是上游的 MUELLE，改用 app 圖示加 HTML 文字，名稱就不會再和專案不一致 */}
+          <Image src={icon} alt="" width={36} height={36} class="size-9" />
+          <span class="ml-2 text-xl font-extrabold tracking-[-0.03em]">{site.name}</span>
         </a>
         <p class="mt-4 max-w-xs text-sm text-mute">{site.tagline}</p>
         <span class="mt-4 block font-mono text-[11px] tracking-[0.08em] text-mute uppercase">
@@ -46,11 +48,9 @@ import { author, site } from "@/data/site";
     </div>
 
     <div class="mt-12 flex flex-wrap justify-between gap-3 border-t border-line pt-5 text-[13px] text-mute">
-      <span>© 2026 {site.name}. Independent project; not affiliated with Apple, Microsoft or the listed AI providers.</span>
+      <span>© 2026 {site.name}。獨立專案，與 Apple、Microsoft 及列出的 AI 供應商皆無關聯。</span>
       <span>
-        Made by <a href={author.profile} class="text-fg underline-offset-4 hover:text-signal hover:underline">{author.shortName}</a>.
-        Open source, built in Rust.
-      </span>
+        由 <a href={author.profile} class="text-fg underline-offset-4 hover:text-signal hover:underline">{author.shortName}</a> 維護，fork 自 {upstream.organization} 的 <a href={upstream.repository} target="_blank" rel="noopener noreferrer" class="text-fg underline-offset-4 hover:text-signal hover:underline">{upstream.name}</a>。以 Rust 打造，開放原始碼。</span>
     </div>
   </Container>
 </footer>

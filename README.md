@@ -5,7 +5,19 @@
   **為 Windows 10 與 11 打造的輕量級 macOS 風格 Dock。**
 
   Harbor 以可自訂的 Dock 取代 Windows 工作列，並提供選用的 macOS 風格選單列。
+
+  [下載](https://github.com/BrianLien09/Harbor/releases/latest/download/Harbor-Setup.exe) ·
+  [官網](https://brianlien09.github.io/Harbor/) ·
+  [更新紀錄](CHANGELOG.md) ·
+  [上游專案 Muelle](https://github.com/crafter-station/Muelle)
 </div>
+
+> [!NOTE]
+> **Harbor 是 [crafter-station/Muelle](https://github.com/crafter-station/Muelle) 的 fork。**
+> Dock、選單列、神燈效果與設定應用程式的核心都來自 Muelle 原作者的成果；
+> 這個 fork 在其基礎上做了**繁體中文在地化**，並依照自己的使用習慣持續加入功能與修正。
+> 本專案與 Muelle 原作者及 Crafter Station 沒有隸屬關係，問題回報請發到
+> [本倉庫的 Issues](https://github.com/BrianLien09/Harbor/issues)，不要打擾上游。
 
 <img width="1500" height="436" alt="Harbor 的 Dock 與選單列" src="https://github.com/user-attachments/assets/3c91b488-214d-453d-a8c2-a9e0dc7f245e" />
 
@@ -18,7 +30,35 @@
 | :---: | :---: |
 | ![吉祥物出現在 Dock 與選單列上方的 GIF](https://github.com/user-attachments/assets/580b235e-6141-493a-a333-8f2b96f3acca) | ![視窗以神燈效果最小化進 Dock 的 GIF](https://github.com/user-attachments/assets/878503a8-7286-445d-826b-41c18da013bc) |
 | **用量預覽** | **用量詳細資訊** |
-| ![Dock 與選單列自動隱藏再重新出現的 GIF](https://github.com/user-attachments/assets/60a8f7c0-20fc-429b-977f-d5b4b7d97d88) | ![視窗以神燈效果最小化進 Dock 的 GIF](https://github.com/user-attachments/assets/fbf21cf6-c1c0-4173-9d68-ae883f0d2a45) |
+| ![選單列 AI 用量島的預覽 GIF](https://github.com/user-attachments/assets/60a8f7c0-20fc-429b-977f-d5b4b7d97d88) | ![展開 AI 用量詳細資訊面板的 GIF](https://github.com/user-attachments/assets/fbf21cf6-c1c0-4173-9d68-ae883f0d2a45) |
+
+## 這個 fork 改了什麼
+
+以下整理自 [CHANGELOG.md](CHANGELOG.md)。從 0.1.18 起是 Harbor 自己的版本；0.1.17 以前的紀錄由 Muelle 的英文原文翻譯而來，保留作為歷史參考。
+
+### 中文化與專案獨立
+
+- 全面繁體中文介面：Dock、選單列、設定應用程式都有中文，README、更新紀錄與官網也改為繁體中文。
+- 專案改名為 Harbor，改從本倉庫的 GitHub Releases 發布，app 內的自動更新也改從這裡下載。
+- 執行檔識別名稱改為 Harbor 自己的名稱；安裝檔附上 `LICENSE` 與 `THIRD-PARTY-NOTICES.md`。
+
+### 新增功能
+
+- **Dock 螢幕位置**：可放在左側、下方或右側，側邊時選單、群組與視窗預覽會在圖示旁打開，神燈也會往側邊飛。
+- **神燈速度**：一般（0.5 秒）、快（0.35 秒）、更快（0.25 秒）三段可選。
+- **多視窗預覽關閉按鈕**：每張預覽卡片右上角可直接關掉該視窗。
+- **結束工作**：執行中 app 的右鍵選單可強制結束，並會避開 Explorer 等系統程序。
+- **需要注意的 app** 會在圖示上顯示紅色提示點。
+- **選單列**：系統匣釘選圖示、正在播放（圓形專輯封面與音量控制）、精簡泡泡樣式、省電模式與 Wi-Fi 提示、藍牙小工具；時鐘改為「年/月/日 (星期) 12 小時制」。
+- **OpenCode 用量卡片**分開顯示 Go 額度與 Zen 近 30 天預估花費。
+
+### 效能與修正
+
+- 神燈最小化不再先閃一下桌面或停頓才起飛，從 Dock 還原也不會冒出 Windows 原生動畫或多閃一下。
+- 選單列閒置 CPU 約減少三成；Dock 放大與彈窗動畫跟著螢幕更新率播放，高更新率螢幕更順。
+- 修正工作列在多螢幕、系統匣操作後重新出現，以及系統管理員權限視窗無法收進 Dock 等問題。
+
+完整內容請見 [CHANGELOG.md](CHANGELOG.md) 或[官網的更新紀錄頁](https://brianlien09.github.io/Harbor/changelog)。
 
 ## 功能
 
@@ -140,8 +180,11 @@ Harbor 不收集任何資料、沒有遙測，也絕不會把任何內容傳送�
 
 ## 致謝與授權
 
-Harbor 以 [Muelle](https://github.com/crafter-station/Muelle)（Crafter Station 的 MIT 授權專案）為基礎，
-在此之上持續開發，並加入繁體中文介面等功能。感謝原作者開源這個專案。
+Harbor fork 自 [Muelle](https://github.com/crafter-station/Muelle)，原專案由
+[Crafter Station](https://crafter.run) 的 [Cristian Olivera Chávez](https://github.com/CristianOlivera1)
+等貢獻者以 MIT 授權開源。沒有他們打下的基礎，就不會有這個 fork，在此致上謝意。
 
-Harbor 以 [MIT 授權](LICENSE) 發布，原專案的版權聲明保留在 LICENSE 中；
-所用到的第三方授權聲明請見 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。
+Harbor 同樣以 [MIT 授權](LICENSE) 發布：LICENSE 同時保留了 Muelle contributors 的原始版權聲明，
+上游的完整授權條款與其他第三方授權請見 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。
+
+Harbor 是獨立專案，與 Apple、Microsoft 及文中提到的 AI 服務供應商皆無關聯。

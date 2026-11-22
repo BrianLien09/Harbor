@@ -1,7 +1,7 @@
 ---
 import { Font } from "astro:assets";
 import IconSprite from "@/components/ui/IconSprite.astro";
-import { author, site } from "@/data/site";
+import { author, site, upstream } from "@/data/site";
 import { absoluteUrl, withBase } from "@/lib/url";
 import "@/styles/global.css";
 
@@ -37,7 +37,7 @@ const website = {
   "@id": `${home}#website`,
   name: site.name,
   url: home,
-  inLanguage: "en",
+  inLanguage: site.lang,
   author: { "@id": author.id },
   publisher: { "@id": author.id },
 };
@@ -63,18 +63,22 @@ const app = !product
       author: { "@id": author.id },
       publisher: { "@id": author.id },
       maintainer: { "@id": author.id },
-      inLanguage: "en",
+      inLanguage: site.lang,
+      // 標明是 Muelle 的衍生作品，搜尋引擎與 AI 摘要才不會把上游誤認成本站維護者。
+      isBasedOn: { "@type": "SoftwareSourceCode", name: upstream.name, codeRepository: upstream.repository },
       isAccessibleForFree: true,
       featureList: [
-        "Icons that grow under the cursor",
-        "Minimized windows as live thumbnails",
-        "Drag files onto apps",
-        "Optional top menu bar",
-        "Restores the Windows taskbar when the dock stops",
-        "AI plan usage for Claude Code, Codex, OpenCode Go, Gemini CLI and Antigravity",
-        "Gemini Pro and Flash quota windows when available",
-        "Event-driven mascot reactions to AI limits and power events",
-        "Genie minimize effect",
+        "繁體中文介面",
+        "圖示隨游標放大",
+        "最小化視窗可顯示為即時縮圖",
+        "可將檔案拖放到應用程式上",
+        "選用的頂端選單列",
+        "Dock 停止時自動還原 Windows 工作列",
+        "Claude Code、Codex、OpenCode Go、Gemini CLI 與 Antigravity 的 AI 方案用量",
+        "可取得時分開顯示 Gemini Pro 與 Flash 額度",
+        "螃蟹吉祥物會對 AI 額度與電源事件做出反應",
+        "神燈最小化效果",
+        "Dock 可放在螢幕左側、下方或右側",
       ],
       offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
       ...(ogImage && { screenshot: ogImage }),
@@ -89,7 +93,7 @@ const schema = noindex
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang={site.lang}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -159,7 +163,7 @@ const schema = noindex
       href="#main"
       class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[60] focus:squircle-pill focus:bg-primary-gradient focus:px-4 focus:py-2 focus:font-bold focus:text-ink"
     >
-      Skip to content
+      跳到主要內容
     </a>
     <IconSprite />
     <slot />

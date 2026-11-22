@@ -5,80 +5,66 @@ import { site } from "@/data/site";
 ---
 
 <PolicyPage
-  title="Privacy policy"
-  description="Harbor has no accounts, analytics or telemetry. Its optional network requests check for updates and read AI provider usage."
-  updated="November 16, 2026"
+  title="隱私權政策"
+  description="Harbor 沒有帳號、分析或遙測。它只有兩種選用的網路請求：檢查更新，以及讀取 AI 供應商的用量。"
+  updated="2026 年 11 月 22 日"
 >
   <p>
-    Harbor has no accounts, no analytics and no telemetry. It does not collect personal data and never sends anything
-    to the Harbor project. It makes only the two kinds of requests below, and both can be turned off in Settings.
+    Harbor 沒有帳號、沒有分析工具、也沒有遙測。它不收集個人資料，也絕不會把任何內容傳送給 Harbor 專案。它只會發出下面兩種請求，而且兩者都可以在設定中關閉。
   </p>
 
-  <h2>1. Update check</h2>
+  <h2>1. 檢查更新</h2>
   <p>
-    When you open Settings, and once a day shortly after you turn on the computer, Harbor asks GitHub
-    whether a newer version exists by downloading{" "}
-    <code>{updateManifest}</code>. Nothing about you or your computer is sent with it; GitHub, like any website, sees
-    your IP address and handles it under the{" "}
-    <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener noreferrer">GitHub privacy statement</a>.
-    When there is one, its signed installer is downloaded from the same GitHub releases page and
-    installed: by itself if <b>Install updates automatically</b> is on, otherwise when you choose to.
-  </p>
-  <p>To turn it off: Settings → System → <b>Check for updates automatically</b> (or only <b>Install updates automatically</b>, to keep the notice in Settings). You can still check by hand.</p>
+    開啟設定應用程式時，以及每天開機後不久，Harbor 會下載{" "}
+    <code>{updateManifest}</code>{" "}來詢問 GitHub 是否有較新的版本。這個請求不會附帶任何關於你或你電腦的資訊；GitHub 和任何網站一樣會看到你的
+    IP 位址，並依照{" "}
+    <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener noreferrer">GitHub 隱私權聲明</a>處理。若有新版本，會從同一個 GitHub Releases 頁面下載已簽署的安裝檔並安裝：開啟<b>自動安裝更新</b>時會自動進行，否則等你決定。</p>
+  <p>關閉方式：設定 → 系統 → <b>自動檢查更新</b>（或只關閉<b>自動安裝更新</b>，保留設定中的更新提示）。你仍然可以手動檢查。</p>
 
-  <h2>2. AI provider usage</h2>
+  <h2>2. AI 供應商用量</h2>
   <p>
-    The menu bar can show available plan limits for Claude Code, Codex,
-    OpenCode Go, Gemini CLI, or Antigravity. It checks usage only while a supported client is
-    running. Gemini Pro and Flash quotas are shown as separate model families when the provider
-    supplies them.
+    選單列可以顯示 Claude Code、Codex、OpenCode Go、Gemini CLI 或 Antigravity 的方案剩餘額度。只有在支援的用戶端執行時才會查詢用量；供應商有提供時，Gemini Pro 與 Flash 的額度會以不同模型分開顯示。
   </p>
   <ul>
     <li>
-      It reads the sign-in that each command-line client already stores on your computer: Claude Code,
-      Codex, OpenCode, Gemini CLI or Antigravity. Harbor never decrypts other
-      apps' stored secrets or reads their databases, and does not save or change these credentials.
+      Harbor 會讀取各個命令列用戶端原本就存在你電腦上的登入狀態：Claude Code、Codex、OpenCode、Gemini CLI 或
+      Antigravity。Harbor 不會解密其他應用程式儲存的機密，也不會讀取它們的資料庫，更不會儲存或修改這些認證資訊。
     </li>
     <li>
-      With that sign-in it asks the corresponding provider for available limits every five minutes while the indicator is visible, or when you press Refresh:
-      Anthropic, OpenAI, OpenCode, or Google. The sign-in only goes to its own provider.
-      Antigravity usage is read from its authenticated local service on <code>127.0.0.1</code>.
-      Percentages and reset times stay in memory and are shown in the menu bar.
+      指示器顯示期間，Harbor 會每五分鐘（或在你按下重新整理時）用該登入狀態向對應的供應商查詢剩餘額度：
+      Anthropic、OpenAI、OpenCode 或 Google。登入資訊只會送往它所屬的供應商。
+      Antigravity 的用量則是從它在 <code>127.0.0.1</code> 上已驗證的本機服務讀取。百分比與重設時間只保留在記憶體中，並顯示在選單列上。
     </li>
     <li>
-      For Codex it may instead read the latest limits that Codex itself writes at the end of its session files
-      (<code>.codex\sessions</code>), without contacting anyone. It reads only those figures.
+      對於 Codex，Harbor 也可能改為讀取 Codex 自己寫在工作階段檔案（<code>.codex\sessions</code>）結尾的最新額度，完全不需連線，而且只讀取那幾個數字。
     </li>
     <li>
-      Each provider handles its requests under its own policy, including{" "}
-      <a href="https://www.anthropic.com/legal/privacy" target="_blank" rel="noopener noreferrer">Anthropic privacy policy</a>,{" "}
-      <a href="https://openai.com/policies/privacy-policy/" target="_blank" rel="noopener noreferrer">OpenAI privacy policy</a>,{" "}
-      <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener noreferrer">GitHub privacy statement</a>, and{" "}
-      <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Google privacy policy</a>.
-    </li>
+      各供應商依其自身政策處理這些請求，包括{" "}
+      <a href="https://www.anthropic.com/legal/privacy" target="_blank" rel="noopener noreferrer">Anthropic 隱私權政策</a>、{" "}
+      <a href="https://openai.com/policies/privacy-policy/" target="_blank" rel="noopener noreferrer">OpenAI 隱私權政策</a>、{" "}
+      <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener noreferrer">GitHub 隱私權聲明</a>與{" "}
+      <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Google 隱私權政策</a>。</li>
   </ul>
-  <p>To turn it off: Settings → Menu bar → <b>Show AI provider usage</b>.</p>
+  <p>關閉方式：設定 → 選單列 → <b>AI 用量</b>。</p>
 
-  <h2>What stays on your computer</h2>
+  <h2>留在你電腦上的資料</h2>
   <ul>
-    <li><code>%APPDATA%\Harbor\config.json</code>: your settings and the apps you pinned.</li>
-    <li><code>%LOCALAPPDATA%\Harbor</code>: a cache of app icons and names, so the dock starts fast.</li>
+    <li><code>%APPDATA%\Harbor\config.json</code>：你的設定與釘選的應用程式。</li>
+    <li><code>%LOCALAPPDATA%\Harbor</code>：應用程式圖示與名稱的快取，讓 Dock 能快速啟動。</li>
   </ul>
   <p>
-    To show what is on screen (open windows, their icons, network and volume status, and whether an app is using the
-    microphone or camera, for the menu bar), Harbor asks Windows itself; none of it leaves your computer. Uninstalling removes the cache, and optionally your settings.
+    為了顯示畫面上的內容（開啟的視窗與圖示、網路與音量狀態，以及選單列上的麥克風／相機使用狀態），Harbor 直接向
+    Windows 查詢，這些資訊都不會離開你的電腦。解除安裝時會移除快取，也可以選擇一併移除設定。
   </p>
 
-  <h2>This website</h2>
+  <h2>本網站</h2>
   <p>
-    The site is hosted on Vercel and uses no cookies, analytics or trackers. Vercel may keep standard server logs (such
-    as IP addresses) under the{" "}
-    <a href="https://vercel.com/legal/privacy-policy" target="_blank" rel="noopener noreferrer">Vercel privacy policy</a>.
-    Downloads come from <a href={site.releases} target="_blank" rel="noopener noreferrer">GitHub Releases</a>.
-  </p>
+    本網站架設在 GitHub Pages 上，不使用 Cookie、分析工具或追蹤器。GitHub 可能會依照{" "}
+    <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener noreferrer">GitHub 隱私權聲明</a>保留標準的伺服器記錄（例如 IP 位址）。下載檔案來自{" "}
+    <a href={site.releases} target="_blank" rel="noopener noreferrer">GitHub Releases</a>。</p>
 
-  <h2>Questions</h2>
+  <h2>有問題嗎？</h2>
   <p>
-    <a href={site.issues} target="_blank" rel="noopener noreferrer">Open an issue on GitHub</a>.
+    請<a href={site.issues} target="_blank" rel="noopener noreferrer">在 GitHub 上開一個 issue</a>。
   </p>
 </PolicyPage>

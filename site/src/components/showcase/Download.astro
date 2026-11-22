@@ -15,12 +15,12 @@ import "@/styles/showcase.css";
   <div class="get" data-r>
     <span class="get-perch">
       <Image src={appIcon} alt="" class="get-icon" width={160} height={160} />
-      <Crab cell={2.5} class="get-crab" interactive label="The crab, waiting for you. Click it." data-download-crab />
+      <Crab cell={2.5} class="get-crab" interactive label="等著你的螃蟹，點點看。" data-download-crab />
     </span>
     <h2 class="get-name">{download.name}</h2>
     <p class="get-tagline">{download.tagline}</p>
 
-    <ul class="get-meta" aria-label="About this download">
+    <ul class="get-meta" aria-label="下載資訊">
       {download.meta.map((item) => <li>{item}</li>)}
     </ul>
 
@@ -48,7 +48,8 @@ import "@/styles/showcase.css";
   </ol>
 
   <p class="get-legal" data-r>
-    <a href={withBase("/privacy")}>Privacy</a>
+    <a href={withBase("/privacy")}>隱私權政策</a> ·
+    <a href={withBase("/changelog")}>更新紀錄</a>
   </p>
 
   <details class="get-source" data-r>

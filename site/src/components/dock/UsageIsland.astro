@@ -47,8 +47,8 @@ const showcaseProviders = usageProviders.slice(0, 2);
 
   <div class="island-panel">
     <div class="island-head">
-      <b>AI usage</b>
-      <span>Updated 2 min ago</span>
+      <b>AI 用量</b>
+      <span>2 分鐘前更新</span>
     </div>
     {
       showcaseProviders.map((provider) => (
@@ -65,7 +65,7 @@ const showcaseProviders = usageProviders.slice(0, 2);
             {
               provider.secondary ? (
                 <p class="island-meta">
-                  <span class="tabular-nums">{provider.secondary.label} · {provider.secondary.used}% used</span>
+                  <span class="tabular-nums">{provider.secondary.label} · 已用 {provider.secondary.used}%</span>
                   <span>{provider.secondary.resets}</span>
                 </p>
               ) : (

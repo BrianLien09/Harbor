@@ -31,7 +31,7 @@ const columns: (AnatomyGroup | "divider")[] = anatomy.flatMap((group) =>
                       {tile.open && <i class="anatomy-dot" aria-hidden="true" />}
                     </span>
                   ) : tile.kind === "start" ? (
-                    <span class="anatomy-tile anatomy-start" role="img" aria-label="Start">
+                    <span class="anatomy-tile anatomy-start" role="img" aria-label="開始">
                       <svg viewBox="0 0 24 24" aria-hidden="true">
                         <rect x="2" y="2" width="9.5" height="9.5" rx="1.2" />
                         <rect x="12.5" y="2" width="9.5" height="9.5" rx="1.2" />
@@ -40,7 +40,7 @@ const columns: (AnatomyGroup | "divider")[] = anatomy.flatMap((group) =>
                       </svg>
                     </span>
                   ) : (
-                    <span class="anatomy-tile anatomy-window" role="img" aria-label="Minimized window">
+                    <span class="anatomy-tile anatomy-window" role="img" aria-label="最小化的視窗">
                       <span class="anatomy-window-bar">
                         <i />
                         <i />

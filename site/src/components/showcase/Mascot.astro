@@ -14,7 +14,7 @@ import "@/styles/showcase.css";
   <SectionIntro {...crabIntro} />
 
   <div class="moments" data-moments data-r>
-    <figure class="moments-desk" aria-label="A desktop with Harbor, where the crab plays the moment you pick">
+    <figure class="moments-desk" aria-label="裝了 Harbor 的桌面，螃蟹會演出你選的時刻">
       <Image
         src={wallpaper}
         alt=""
@@ -23,7 +23,7 @@ import "@/styles/showcase.css";
         sizes="(min-width: 1024px) 640px, 100vw"
       />
       <div class="moments-bar" aria-hidden="true">
-        <b>Terminal</b>
+        <b>終端機</b>
         <span class="moments-power" data-power>
           <svg viewBox="0 0 16 16" class="moments-bolt" data-power-icon="charging">
             <path d="M9.2 1 3.5 9h3.7L6.4 15l6.1-8.3H8.8L9.2 1Z" fill="currentColor"></path>
@@ -47,7 +47,7 @@ import "@/styles/showcase.css";
       <div class="moments-dock" data-moments-dock aria-hidden="true">
         {previewIcons.map((icon) => <Image src={icon} alt="" width={44} height={44} />)}
       </div>
-      <Crab cell={3} class="crab-free" interactive label="The crab. Hover over it." data-moments-crab />
+      <Crab cell={3} class="crab-free" interactive label="螃蟹，把游標移到牠身上。" data-moments-crab />
       <figcaption class="sr-only" aria-live="polite" data-moment-caption></figcaption>
     </figure>
 

@@ -162,50 +162,50 @@ export interface CrabMoment {
 export const crabMoments: CrabMoment[] = [
   {
     act: "fresh",
-    title: "Your AI limit resets",
-    body: "Back to 0 %. It hops out under the provider with a heart.",
+    title: "AI 額度重設",
+    body: "回到 0 %。牠會帶著愛心從供應商下方跳出來。",
     place: "island",
     usage: 0,
   },
   {
     act: "nervous",
-    title: "Past 90 %",
-    body: "It trembles, with a drop of sweat. Time to pace yourself.",
+    title: "超過 90 %",
+    body: "牠緊張得冒冷汗發抖，該放慢腳步了。",
     place: "island",
     usage: 92,
   },
   {
     act: "exhausted",
-    title: "Limit reached",
-    body: "At 100 % it runs out of steam and dozes off.",
+    title: "額度用完",
+    body: "到了 100 %，牠沒力氣了，直接打起瞌睡。",
     place: "island",
     usage: 100,
   },
   {
     act: "charging",
-    title: "Charger plugged in",
-    body: "It scurries along the dock, happy to be powered up.",
+    title: "插上充電器",
+    body: "牠開心地沿著 Dock 一路小跑步。",
     place: "dock",
     battery: "charging",
   },
   {
     act: "sleepy",
-    title: "Energy saver on",
-    body: "It shuffles onto the dock and takes a nap.",
+    title: "省電模式開啟",
+    body: "牠慢吞吞走上 Dock，睡個午覺。",
     place: "dock",
     battery: "saver",
   },
 ];
 
 export const crabIntro = {
-  eyebrow: "Meet the crab",
-  title: "A little friend for the moments that matter.",
-  lead: "A pixel crab comes out only when something worth it happens, plays a short scene and leaves. The rest of the time it costs nothing. Pick a moment, or hover over it.",
+  eyebrow: "認識螃蟹",
+  title: "在關鍵時刻陪著你的小夥伴。",
+  lead: "像素螃蟹只在值得的時刻現身，演一小段就離開，其他時間完全不耗資源。選一個時刻看看，或把游標移到牠身上。",
 } as const;
 
 export const crabFacts = [
-  "Never all the time: only on these moments.",
-  "Hover over it and it reacts.",
-  "Runs in the system compositor; zero cost while away.",
-  "Settings → Dock → Crab on special moments.",
+  "不會一直待著，只在這些時刻出現。",
+  "游標移過去，牠會有反應。",
+  "交給系統合成器繪製，離開時零消耗。",
+  "設定 → Dock → 在特殊時刻出現螃蟹。",
 ] as const;

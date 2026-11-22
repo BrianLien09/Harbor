@@ -23,14 +23,14 @@ export interface DockItem {
 }
 
 export const dockItems: DockItem[] = [
-  { id: "explorer", label: "File Explorer", icon: fileExplorer, kind: "app", open: true },
+  { id: "explorer", label: "檔案總管", icon: fileExplorer, kind: "app", open: true },
   { id: "store", label: "Microsoft Store", icon: microsoftStore, kind: "app" },
-  { id: "terminal", label: "Windows Terminal", icon: windowsTerminal, kind: "app", open: true },
-  { id: "photos", label: "Microsoft Photos", icon: microsoftPhotos, kind: "app" },
+  { id: "terminal", label: "Windows 終端機", icon: windowsTerminal, kind: "app", open: true },
+  { id: "photos", label: "相片", icon: microsoftPhotos, kind: "app" },
   { id: "media-player", label: "Windows Media Player", icon: windowsMediaPlayer, kind: "app" },
   { id: "teams", label: "Microsoft Teams", icon: microsoftTeams, kind: "app" },
-  { id: "weather", label: "MSN Weather", icon: msnWeather, kind: "app" },
-  { id: "settings", label: "Settings", icon: settings, kind: "app" },
-  { id: "downloads", label: "Downloads", icon: downloads, kind: "folder" },
-  { id: "trash", label: "Recycle Bin", icon: recycleBin, kind: "trash" },
+  { id: "weather", label: "MSN 天氣", icon: msnWeather, kind: "app" },
+  { id: "settings", label: "設定", icon: settings, kind: "app" },
+  { id: "downloads", label: "下載", icon: downloads, kind: "folder" },
+  { id: "trash", label: "資源回收筒", icon: recycleBin, kind: "trash" },
 ];

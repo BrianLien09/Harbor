@@ -6,40 +6,45 @@ import Section from "@/components/layout/Section.astro";
 import Button from "@/components/ui/Button.astro";
 import Icon from "@/components/ui/Icon.astro";
 import StatStrip from "@/components/ui/StatStrip.astro";
-import { site } from "@/data/site";
+import { site, upstream } from "@/data/site";
+import { withBase } from "@/lib/url";
 ---
 
 <Section id="top" spacing={false} class="pt-20 text-center">
 
   <h1 data-h class="mt-[18px] text-[clamp(2.75rem,7.4vw,6rem)]">
     <span class="relative inline-block">
-      Your Dock<Image
+      你的 Dock<Image
         src={kDecor}
         alt=""
         class="pointer-events-none absolute top-[0.6em] -right-[0.6em] w-[0.82em] select-none -mask-linear-50 mask-linear-from-60% mask-linear-to-80%"
       />
     </span>
-    <span class="block bg-gradient-to-r from-neutral-600 via-neutral-400 to-white bg-clip-text text-transparent">now on Windows.</span>
+    <span class="block bg-gradient-to-r from-neutral-600 via-neutral-400 to-white bg-clip-text text-transparent">現在也在 Windows 上。</span>
   </h1>
 
   <p data-h class="mx-auto mt-[22px] mb-[30px] max-w-[560px] text-lg text-mute">
-    Harbor replaces the Windows taskbar with a glass dock: icons grow under your cursor,
-    windows fold into the dock with the Genie effect, and a pixel crab shows up when it
-    matters. Free, open source and light.
+    Harbor 用毛玻璃 Dock 取代 Windows 工作列：圖示隨游標放大、視窗以神燈效果收進 Dock，關鍵時刻還會有像素螃蟹出來打招呼。免費、開源又輕巧。
+  </p>
+
+  {/* fork 聲明放在首屏，讓訪客一進來就知道這是 Muelle 的分支，並能直接連到上游與更新紀錄 */}
+  <p data-h class="mx-auto -mt-[14px] mb-[30px] max-w-[560px] text-sm text-mute">
+    Fork 自{" "}
+    <a href={upstream.repository} target="_blank" rel="noopener noreferrer" class="underline underline-offset-4 hover:text-fg">{upstream.name}</a>，加入繁體中文在地化與多項改進，詳見<a href={withBase("/changelog")} class="underline underline-offset-4 hover:text-fg">更新紀錄</a>。
   </p>
 
   <div data-h class="flex flex-wrap items-center justify-center gap-3">
     <Button href={site.download}>
-      Download for Windows
+      下載 Windows 版
       <span
         data-installer-download-count
-        aria-label="Total installer downloads"
+        aria-label="安裝檔累計下載次數"
         class="rounded-full bg-ink/10 px-2 py-0.5 font-mono text-xs font-semibold"
         hidden
       ></span>
       <Icon name="arrow-right" size={18} />
     </Button>
-    <Button href="#dock" variant="secondary">Take a look</Button>
+    <Button href="#dock" variant="secondary">先看看</Button>
   </div>
 
   <div data-hero-mock>
@@ -88,7 +93,7 @@ import { site } from "@/data/site";
 
       // 沒有任何下載時不顯示數字，避免畫面出現 0。
       if (total > 0) {
-        count.textContent = new Intl.NumberFormat("en-US", {
+        count.textContent = new Intl.NumberFormat("zh-TW", {
           notation: "compact",
           maximumFractionDigits: 1,
         }).format(total);

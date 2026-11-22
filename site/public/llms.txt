@@ -2,6 +2,8 @@
 
 > Harbor is a free, MIT-licensed dock for Windows 10 and 11 written in Rust. It hides the Windows taskbar and replaces it with a macOS-style dock: icons that grow under the cursor, minimized windows that fold into their app's icon with the Genie effect (or, optionally, wait as live thumbnails), drag and drop onto apps, and an optional menu bar AI usage island for Claude Code, Codex, GitHub Copilot, Cursor, OpenCode Go, Gemini CLI, and Antigravity. Gemini Pro and Flash quotas are shown separately when available. A small guardian process gives the taskbar back if the dock quits or crashes.
 
+Harbor is a fork of [Muelle](https://github.com/crafter-station/Muelle) by Crafter Station (MIT). This fork, maintained by BrianLien09, adds a Traditional Chinese (Taiwan) interface and website, ships from its own repository, and adds features such as left/right dock positions, genie speed options, close buttons on window previews and menu bar improvements. See the changelog for details; versions before 0.1.18 are translated from Muelle's history.
+
 Harbor is not an Electron app: the dock is a native Win32 process that draws through the Windows composition engine. Measured on the author's PC: about 17 MB of private memory and no CPU while idle. The separate Settings window (Tauri 2 + WebView2) only runs while it is open.
 
 ## Pages
@@ -13,6 +15,8 @@ Harbor is not an Electron app: the dock is a native Win32 process that draws thr
 - [Reversible](https://brianlien09.github.io/Harbor/#safety): how the Windows taskbar comes back.
 - [Download](https://brianlien09.github.io/Harbor/#download): installer and build from source.
 - [Privacy policy](https://brianlien09.github.io/Harbor/privacy): what Harbor sends over the network and what stays on the PC.
+- [Changelog](https://brianlien09.github.io/Harbor/changelog): every release, in Traditional Chinese.
+- [About](https://brianlien09.github.io/Harbor/about): the fork maintainer and the upstream Muelle project.
 
 ## Download
 
@@ -33,4 +37,4 @@ Harbor is not an Electron app: the dock is a native Win32 process that draws thr
 - AI usage island: shown only while a supported client is running; reuses sign-ins stored by Claude Code, Codex, GitHub Copilot, Cursor, OpenCode, Gemini CLI, or Antigravity. It reads available limits from Anthropic, OpenAI, GitHub, Cursor, OpenCode, or Google at most every five minutes while visible. Gemini Pro and Flash quotas are separate when available; Antigravity is queried locally. The feature can be turned off in Settings.
 - Network: Settings checks GitHub Releases for updates (can be turned off); AI usage requests go directly to the relevant provider. Harbor sends no telemetry.
 - Uninstall or quit: the Windows taskbar comes back, and uninstalling leaves Windows as it was.
-- Independent project, not affiliated with Apple, Microsoft, or the listed AI providers. The visual language is inspired by macOS; the icons and code are original.
+- Independent project, not affiliated with Apple, Microsoft, the listed AI providers, or the upstream Muelle maintainers. The visual language is inspired by macOS; the icons and code are original.

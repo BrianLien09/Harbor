@@ -40,7 +40,7 @@ import "@/styles/showcase.css";
         <span class="flip-menubar-status">
           <MenuBarStatus />
           <span class="hidden sm:inline" data-date>
-            Fri, Nov 14
+            11月14日 週五
           </span>
           <span class="tabular-nums" data-clock>
             9:41
@@ -72,7 +72,7 @@ import "@/styles/showcase.css";
       </div>
 
       <p class="sr-only" data-flip-status>
-        The Windows taskbar is showing.
+        目前顯示的是 Windows 工作列。
       </p>
     </div>
   </div>
@@ -109,8 +109,8 @@ import "@/styles/showcase.css";
       desk.dataset.state = on ? "on" : "off";
       if (status) {
         status.textContent = on
-          ? "Harbor is running: dock and menu bar."
-          : "The Windows taskbar is showing.";
+          ? "Harbor 執行中：顯示 Dock 與選單列。"
+          : "目前顯示的是 Windows 工作列。";
       }
     };
 

@@ -61,7 +61,7 @@ export function initMoments(root: HTMLElement) {
   const setPower = (state?: "charging" | "saver") => {
     if (state) power.dataset.state = state;
     else delete power.dataset.state;
-    if (powerLabel) powerLabel.textContent = state === "charging" ? "Charging" : state === "saver" ? "Energy saver" : "";
+    if (powerLabel) powerLabel.textContent = state === "charging" ? "充電中" : state === "saver" ? "省電模式" : "";
   };
 
   const select = (index: number) => {

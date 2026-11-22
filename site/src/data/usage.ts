@@ -23,53 +23,53 @@ export const usageProviders: UsageProvider[] = [
     name: "Claude Code",
     logo: claude,
     color: "#d97757",
-    primary: { label: "5 h", used: 46, resets: "Resets 3:10 PM" },
-    secondary: { label: "7 d", used: 35, resets: "Resets Nov 21" },
+    primary: { label: "5 h", used: 46, resets: "下午 3:10 重設" },
+    secondary: { label: "7 天", used: 35, resets: "11/21 重設" },
   },
   {
     name: "Codex",
     logo: codex,
     color: "#87bef5",
-    primary: { label: "5 h", used: 28, resets: "Resets 4:30 PM" },
-    secondary: { label: "7 d", used: 41, resets: "Resets Nov 21" },
+    primary: { label: "5 h", used: 28, resets: "下午 4:30 重設" },
+    secondary: { label: "7 天", used: 41, resets: "11/21 重設" },
   },
   {
     name: "OpenCode Go",
     logo: opencode,
     color: "#84c4a6",
-    primary: { label: "5 h", used: 25, resets: "Resets 4:00 PM" },
-    secondary: { label: "7 d", used: 40, resets: "Resets Nov 21" },
+    primary: { label: "5 h", used: 25, resets: "下午 4:00 重設" },
+    secondary: { label: "7 天", used: 40, resets: "11/21 重設" },
   },
   {
     name: "Gemini / Antigravity",
     logo: gemini,
     color: "#6f92ff",
-    primary: { label: "Gemini Pro", used: 49, resets: "Resets 5:10 PM" },
-    secondary: { label: "Gemini Flash", used: 18, resets: "Resets Nov 21" },
+    primary: { label: "Gemini Pro", used: 49, resets: "下午 5:10 重設" },
+    secondary: { label: "Gemini Flash", used: 18, resets: "11/21 重設" },
   },
 ];
 
 export const usageIntro = {
-  eyebrow: "AI usage",
-  title: "AI plan usage, at a glance.",
-  lead: "Harbor shows available limits for Claude Code, Codex, OpenCode Go, and Gemini CLI or Antigravity. Gemini Pro and Flash quotas appear separately when available.",
+  eyebrow: "AI 用量",
+  title: "AI 方案用量，一眼看清。",
+  lead: "Harbor 會顯示 Claude Code、Codex、OpenCode Go，以及 Gemini CLI 或 Antigravity 的剩餘額度。可取得時，Gemini Pro 與 Flash 的額度會分開顯示。",
 } as const;
 
 export const usageFacts = [
   {
-    title: "Only while you use them",
-    body: "The island recognizes four clients: Claude Code, Codex, OpenCode Go, and Gemini CLI or Antigravity.",
+    title: "只在你使用時出現",
+    body: "用量島認得四種用戶端：Claude Code、Codex、OpenCode Go，以及 Gemini CLI 或 Antigravity。",
   },
   {
-    title: "Your existing session",
-    body: "Harbor reuses the sign-in those tools already keep on your PC. Gemini Pro and Flash are shown as separate model families when the provider supplies those quotas.",
+    title: "沿用現有的登入",
+    body: "Harbor 直接使用這些工具原本就存在電腦上的登入狀態。供應商有提供時，Gemini Pro 與 Flash 會以不同模型分開顯示。",
   },
   {
-    title: "Straight to the provider",
-    body: "It checks available limits every five minutes or when you press Refresh. Antigravity is queried through its authenticated local service; a separate process keeps the dock responsive.",
+    title: "直接向供應商查詢",
+    body: "每五分鐘或按下重新整理時查詢一次額度。Antigravity 透過其已驗證的本機服務查詢；查詢在獨立程序中執行，Dock 不會因此卡頓。",
   },
   {
-    title: "One switch to turn it off",
-    body: "Settings → Menu bar → Show AI provider usage. Harbor stores no credentials.",
+    title: "一個開關就能關閉",
+    body: "設定 → 選單列 → AI 用量。Harbor 不會儲存任何認證資訊。",
   },
 ] as const;

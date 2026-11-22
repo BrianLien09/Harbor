@@ -11,23 +11,39 @@ import { absoluteUrl, withBase } from "@/lib/url";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import "@/styles/showcase.css";
 
-const description = `Harbor is a free, open-source macOS-style dock for Windows, maintained by ${author.name}.`;
+const description = `Harbor 是 ${author.name} 維護的 ${upstream.name} fork：免費、開源的 Windows macOS 風格 Dock，加入繁體中文在地化與多項改進。`;
 const canonical = absoluteUrl("/about");
 
 const makerLinks = [{ label: "GitHub", href: author.github }];
 
+const upstreamLinks = [
+  { label: `${upstream.name} 原始碼`, href: upstream.repository },
+  { label: upstream.organization, href: upstream.organizationUrl },
+  { label: upstream.author, href: upstream.authorUrl },
+];
+
+/** 這個 fork 和上游的主要差異，內容整理自 CHANGELOG 0.1.18 之後的版本。 */
+const forkChanges = [
+  "Dock、選單列、設定應用程式全面繁體中文化，官網、README 與更新紀錄也改用繁體中文。",
+  "改名為 Harbor，從自己的 GitHub 倉庫發布，app 內自動更新也改從這裡下載。",
+  "Dock 可放在螢幕左側、下方或右側，神燈速度可調，多視窗預覽卡片可直接關閉視窗。",
+  "右鍵「結束工作」、需要注意的 app 紅點提示、系統匣釘選圖示與正在播放等選單列功能。",
+  "神燈動畫不再閃爍、選單列閒置 CPU 約減三成，並修正多項工作列重現問題。",
+];
+
 const facts = [
-  { label: "License", value: site.license },
-  { label: "Written in", value: "Rust" },
-  { label: "Runs on", value: "Windows 10 and 11" },
-  { label: "Current version", value: `v${site.version}` },
+  { label: "授權", value: site.license },
+  { label: "程式語言", value: "Rust" },
+  { label: "支援系統", value: "Windows 10／11" },
+  { label: "目前版本", value: `v${site.version}` },
+  { label: "上游專案", value: upstream.name },
 ];
 
 const schema = [
   {
     "@type": "AboutPage",
     "@id": `${canonical}#page`,
-    name: "About Harbor",
+    name: "關於 Harbor",
     url: canonical,
     description,
     isPartOf: { "@id": absoluteUrl("/#website") },
@@ -38,10 +54,11 @@ const schema = [
   {
     "@type": "SoftwareSourceCode",
     "@id": `${site.repository}#code`,
-    name: "Harbor source code",
+    name: "Harbor 原始碼",
     codeRepository: site.repository,
     programmingLanguage: "Rust",
     license: `${site.repository}/blob/main/LICENSE`,
+    isBasedOn: { "@type": "SoftwareSourceCode", name: upstream.name, codeRepository: upstream.repository },
     author: { "@id": author.id },
     publisher: { "@id": author.id },
     targetProduct: { "@id": absoluteUrl("/#app") },
@@ -49,24 +66,23 @@ const schema = [
 ];
 ---
 
-<BaseLayout title="About Harbor - an open-source dock for Windows" {description} product={false} {schema}>
+<BaseLayout title="關於 Harbor - Muelle 的繁體中文 fork" {description} product={false} {schema}>
   <SiteHeader />
 
   <main id="main" class="about pt-24 pb-10" data-about>
     <Container>
       <header class="intro" data-r>
         <Image src={appIcon} alt="" class="about-icon" width={112} height={112} />
-        <p class="intro-eyebrow">About</p>
-        <h1 class="intro-title">Built in the open.</h1>
+        <p class="intro-eyebrow">關於</p>
+        <h1 class="intro-title">站在 {upstream.name} 的肩膀上。</h1>
         <p class="intro-lead">
-          Harbor is a free dock for Windows that feels like the one on a Mac. It runs on Windows 10 and 11, is written
-          in Rust, and comes with a Traditional Chinese interface.
+          Harbor 是 <a href={upstream.repository} target="_blank" rel="noopener noreferrer" class="about-inline">{upstream.name}</a>{" "}的 fork：一個讓 Windows 擁有 Mac 般 Dock 的免費工具。這個版本在原作的基礎上完成繁體中文在地化，並依照自己的使用習慣持續加入功能與修正。
         </p>
       </header>
 
-      <section class="about-grid" aria-label="Who makes Harbor">
+      <section class="about-grid" aria-label="Harbor 的作者們">
         <article class="about-card about-maker" data-r>
-          <p class="about-label">The maker</p>
+          <p class="about-label">Fork 維護者</p>
           <div class="about-person">
             <img
               src={`${author.github}.png?size=160`}
@@ -83,8 +99,7 @@ const schema = [
             </div>
           </div>
           <p>
-            Harbor is maintained by one developer. The dock, the menu bar with AI usage limits, the Settings app and this
-            website are developed together, with a Traditional Chinese interface from the start.
+            Harbor 由一位開發者維護，負責中文化、新功能與修正，並從自己的倉庫發布版本。問題回報與功能建議請發到 Harbor 的 GitHub Issues，不要打擾上游。
           </p>
           <ul class="about-links">
             {
@@ -100,27 +115,59 @@ const schema = [
           </ul>
         </article>
 
+        <article class="about-card" data-r>
+          <p class="about-label">原始專案</p>
+          <div>
+            <h2>{upstream.name}</h2>
+            <p class="about-meta">{upstream.organization} · {upstream.author}</p>
+          </div>
+          <p>
+            Dock、選單列、神燈效果、螃蟹吉祥物與設定應用程式的核心設計都來自 {upstream.name}。原作以 MIT 授權開源，Harbor 才能在此基礎上延伸，衷心感謝原作者與所有貢獻者。
+          </p>
+          <ul class="about-links">
+            {
+              upstreamLinks.map((link) => (
+                <li>
+                  <a href={link.href} target="_blank" rel="noopener noreferrer">
+                    {link.label}
+                    <Icon name="arrow-up-right" size={12} />
+                  </a>
+                </li>
+              ))
+            }
+          </ul>
+        </article>
+      </section>
+
+      <section class="about-card about-changes" aria-labelledby="fork-changes" data-r>
+        <p class="about-label">這個 fork 改了什麼</p>
+        <h2 id="fork-changes">中文化，加上一些順手的改進。</h2>
+        <ul class="about-change-list">
+          {forkChanges.map((change) => <li>{change}</li>)}
+        </ul>
+        <a class="about-secondary" href={withBase("/changelog")}>
+          看完整更新紀錄
+          <Icon name="arrow-right" size={14} />
+        </a>
       </section>
 
       <section class="about-card about-open" aria-labelledby="open-source" data-r>
         <div>
-          <p class="about-label">Open source</p>
-          <h2 id="open-source">Read it, build it, change it.</h2>
+          <p class="about-label">開放原始碼</p>
+          <h2 id="open-source">看得到、建得起來、改得動。</h2>
           <p>
-            All of Harbor is on GitHub under the {site.license} license. You can build the installer from source, read
-            exactly what it sends over the network, and send a fix. Community pull requests already ship in releases.
+            Harbor 的所有程式碼都以 {site.license} 授權放在 GitHub 上。你可以從原始碼建置安裝檔、檢查它實際送出哪些網路請求，也歡迎送修正過來。
           </p>
           <p>
-            Harbor started from <a href={upstream.repository} target="_blank" rel="noopener noreferrer" class="about-inline">{upstream.name}</a>,
-            an MIT-licensed project by {upstream.organization}. The original copyright notice is kept in the LICENSE file.
+            依照 MIT 授權，LICENSE 檔保留了 {upstream.name} contributors 的原始版權聲明，上游的完整授權條款另收錄在 THIRD-PARTY-NOTICES.md，安裝檔也會一併附上。
           </p>
           <div class="about-actions">
             <Button href={site.repository}>
-              View the source
+              查看原始碼
               <Icon name="github" size={18} />
             </Button>
             <a class="about-secondary" href={withBase("/changelog")}>
-              Read the changelog
+              閱讀更新紀錄
               <Icon name="arrow-right" size={14} />
             </a>
           </div>
@@ -151,8 +198,8 @@ const schema = [
 
   .about-grid {
     display: grid;
-    /* 只剩作者一張卡片，改為單欄避免右側留白 */
-    grid-template-columns: minmax(0, 1fr);
+    /* 維護者與上游各一張卡片並排，讓 fork 關係一眼可見 */
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 20px;
     margin-top: 88px;
   }
@@ -218,6 +265,19 @@ const schema = [
   .about-links a:hover {
     border-color: var(--color-primary);
     color: var(--color-signal);
+  }
+
+  .about-changes {
+    margin-top: 20px;
+  }
+  .about-change-list {
+    display: grid;
+    gap: 10px;
+    padding-left: 1.25rem;
+    list-style: disc;
+  }
+  .about-changes .about-secondary {
+    align-self: flex-start;
   }
 
   .about-open {

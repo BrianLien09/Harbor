@@ -19,7 +19,7 @@ const { title, description, updated } = Astro.props;
   <main id="main" class="py-16">
     <Container>
       <article class="policy mx-auto max-w-[72ch]">
-        <p class="font-mono text-[11px] tracking-[0.08em] text-mute uppercase">Updated {updated}</p>
+        <p class="font-mono text-[11px] tracking-[0.08em] text-mute uppercase">最後更新：{updated}</p>
         <h1 class="mt-3 text-[clamp(2rem,5vw,3rem)] leading-tight">{title}</h1>
         <slot />
       </article>

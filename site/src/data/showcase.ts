@@ -30,56 +30,56 @@ export interface AnatomyGroup {
 }
 
 export const anatomyIntro = {
-  eyebrow: "The Dock",
-  title: "Everything in its place.",
-  lead: "Your apps, your files and your open windows, in one glass shelf at the bottom of the screen. Every part of it works like you expect from a Mac.",
+  eyebrow: "Dock",
+  title: "每樣東西都在該在的位置。",
+  lead: "應用程式、檔案與開啟中的視窗，都收在螢幕底部的一排毛玻璃架上，每個部分的用法都跟你在 Mac 上習慣的一樣。",
 } as const;
 
 export const anatomy: AnatomyGroup[] = [
-  { label: "Start", detail: "The Windows Start menu, always first", side: "top", tiles: [{ kind: "start" }] },
+  { label: "開始", detail: "Windows 開始功能表，永遠排第一", side: "top", tiles: [{ kind: "start" }] },
   {
-    label: "Pinned apps",
-    detail: "Drag to reorder. A dot marks the open ones",
+    label: "釘選的應用程式",
+    detail: "拖曳即可重新排序，開啟中的會有小圓點",
     side: "bottom",
     tiles: [
-      { kind: "app", icon: fileExplorer, label: "File Explorer", open: true },
+      { kind: "app", icon: fileExplorer, label: "檔案總管", open: true },
       { kind: "app", icon: microsoftStore, label: "Microsoft Store" },
-      { kind: "app", icon: windowsTerminal, label: "Terminal", open: true },
-      { kind: "app", icon: settings, label: "Settings" },
+      { kind: "app", icon: windowsTerminal, label: "終端機", open: true },
+      { kind: "app", icon: settings, label: "設定" },
     ],
   },
   {
-    label: "Recent apps",
-    detail: "The last three you used",
+    label: "最近使用",
+    detail: "最近用過的三個應用程式",
     side: "top",
     tiles: [
-      { kind: "app", icon: microsoftPhotos, label: "Photos", open: true },
-      { kind: "app", icon: windowsMediaPlayer, label: "Media Player" },
+      { kind: "app", icon: microsoftPhotos, label: "相片", open: true },
+      { kind: "app", icon: windowsMediaPlayer, label: "媒體播放器" },
       { kind: "app", icon: microsoftTeams, label: "Teams" },
     ],
   },
   {
-    label: "Downloads",
-    detail: "Drop files straight in",
+    label: "下載",
+    detail: "檔案可以直接拖進來",
     side: "bottom",
     divider: true,
-    tiles: [{ kind: "app", icon: downloads, label: "Downloads" }],
+    tiles: [{ kind: "app", icon: downloads, label: "下載" }],
   },
-  { label: "Minimized", detail: "Optional live thumbnails of minimized windows", side: "top", tiles: [{ kind: "window" }] },
+  { label: "最小化", detail: "可選擇以即時縮圖顯示最小化的視窗", side: "top", tiles: [{ kind: "window" }] },
   {
-    label: "Recycle Bin",
-    detail: "Drop files to delete them",
+    label: "資源回收筒",
+    detail: "把檔案拖進來就能刪除",
     side: "bottom",
-    tiles: [{ kind: "app", icon: recycleBin, label: "Recycle Bin" }],
+    tiles: [{ kind: "app", icon: recycleBin, label: "資源回收筒" }],
   },
 ];
 
 /* -------------------------------------------------------------- Customize */
 
 export const customizeIntro = {
-  eyebrow: "Settings",
-  title: "Make it yours.",
-  lead: "A real settings window, in English or Spanish. Try each change here, including optional mouse and headset battery indicators. Accessory monitoring stays off until you enable it.",
+  eyebrow: "設定",
+  title: "調成你喜歡的樣子。",
+  lead: "真正的設定視窗，預設就是繁體中文（也能切換英文或西班牙文）。每個選項都能在這裡試，包括選用的滑鼠與耳機電量指示；配件偵測在你開啟前都不會啟動。",
 } as const;
 
 /** The preview dock in the Customize scene. */
@@ -113,8 +113,51 @@ export const settingsDefaults = {
   autoUpdate: true,
 } as const;
 
-/** The Settings app's own strings (`apps/settings/src/i18n`), in both languages. */
+/**
+ * 設定應用程式本身的字串（`apps/settings/src/i18n`）。
+ * zh 放第一個並作為預設，因為 Harbor 這個 fork 的主要使用者是繁體中文使用者；
+ * 中文字串盡量沿用 app 的 zh-TW.json，網站展示才會和實際介面一致。
+ */
 export const settingsText = {
+  zh: {
+    title: "Harbor 設定",
+    dock: "Dock",
+    windows: "視窗",
+    menubar: "選單列",
+    system: "系統",
+    size: "大小",
+    small: "小",
+    large: "大",
+    magnification: "放大效果",
+    magnificationHint: "游標經過時，圖示會跟著放大。",
+    magnifiedSize: "放大後的大小",
+    autoHide: "自動隱藏",
+    autoHideHint: "將游標停在 Dock 所在的邊緣即可顯示，任何螢幕都適用。",
+    menuBar: "顯示選單列",
+    menuBarHint: "時間、電池，以及 Windows 快速設定與通知的入口。",
+    menuBarAutoHide: "自動隱藏",
+    menuBarAutoHideHint: "將游標停在螢幕頂端邊緣即可顯示。",
+    aiUsage: "AI 用量",
+    aiUsageHint: "使用你現有的登入工作階段；每 5 分鐘檢查一次，絕不儲存認證資訊。",
+    accessoryBattery: "顯示配件電量",
+    accessoryBatteryHint: "支援的滑鼠與耳機。關閉時不會查詢裝置。",
+    accessoryPreviewHint: "開啟後可預覽已連接的滑鼠與耳機。數值僅為範例，實際支援依裝置而定。",
+    genie: "神燈效果",
+    genieHint: "開啟時，視窗不會使用 Windows 的最大化與關閉動畫。",
+    showMinimized: "顯示最小化的視窗",
+    showMinimizedHint: "縮圖會與應用程式圖示分開顯示。",
+    autostart: "登入時開啟 Harbor",
+    mascot: "在特殊時刻出現螃蟹",
+    mascotHint: "AI 方案變更、充電與省電模式時，會有一隻螃蟹來提示。把游標移到牠身上看看。",
+    autoUpdate: "自動安裝更新",
+    autoUpdateHint: "每天安裝一次新版本。",
+    language: "語言",
+    languageAuto: "自動",
+    updates: "更新",
+    updatesCurrent: `Harbor ${site.version} 已是最新版本。`,
+    updatesChecking: "正在檢查更新…",
+    updatesCheck: "檢查",
+  },
   en: {
     title: "Harbor Settings",
     dock: "Dock",
@@ -195,23 +238,24 @@ export const settingsText = {
   },
 } as const;
 
-export type SettingsKey = keyof (typeof settingsText)["en"];
+export type SettingsLang = keyof typeof settingsText;
+export type SettingsKey = keyof (typeof settingsText)["zh"];
 
 /* ----------------------------------------------------------------- Safety */
 
 export const safetyIntro = {
-  eyebrow: "Reversible",
-  title: "Your taskbar is never gone. Just tucked away.",
-  lead: "Harbor hides the Windows taskbar while it runs and gives it back the moment it stops. Flip the switch and see.",
+  eyebrow: "隨時可還原",
+  title: "工作列沒有消失，只是先收起來。",
+  lead: "Harbor 執行時會隱藏 Windows 工作列，一結束就立刻還給你。切換開關試試看。",
 } as const;
 
 /** The taskbar shown when Harbor is off. */
 export const taskbarIcons: ImageMetadata[] = [fileExplorer, microsoftStore, windowsTerminal, microsoftPhotos, settings];
 
 export const safetyFacts = [
-  { title: "Quit any time", body: "Right-click the dock and choose Quit Harbor. The taskbar is back at once." },
-  { title: "Even if it stops", body: "A tiny guardian process watches the dock and restores the taskbar if it ever stops." },
-  { title: "Uninstall cleanly", body: "Windows Settings → Apps → Harbor. Windows is left exactly as it was." },
+  { title: "隨時結束", body: "在 Dock 上按右鍵選擇「結束 Harbor」，工作列馬上回來。" },
+  { title: "就算意外停止也沒事", body: "一個小小的守護程序會盯著 Dock，萬一它停止就自動還原工作列。" },
+  { title: "乾淨解除安裝", body: "Windows 設定 → 應用程式 → Harbor，Windows 會完全恢復原狀。" },
 ] as const;
 
 /* --------------------------------------------------------------- Download */
@@ -220,21 +264,21 @@ export const download = {
   name: site.name,
   tagline: site.tagline,
   meta: [
-    `Version ${site.version}`,
-    "Windows 10 & 11 · 64-bit",
+    `版本 ${site.version}`,
+    "Windows 10／11 · 64 位元",
     `${figures.installer.value} ${figures.installer.unit}`,
-    `Free · ${site.license}`,
+    `免費 · ${site.license}`,
   ],
-  cta: "Download for Windows",
-  releases: "All versions on GitHub",
+  cta: "下載 Windows 版",
+  releases: "GitHub 上的所有版本",
   steps: [
-    { title: "Open the installer", body: "Per user. No admin rights, no wizard." },
-    { title: "If SmartScreen asks", body: "Harbor is new, so Windows may not know it yet: More info → Run anyway." },
-    { title: "That's it", body: "The dock appears and starts with Windows from now on." },
+    { title: "開啟安裝檔", body: "只安裝給目前使用者，不需系統管理員權限，也沒有安裝精靈。" },
+    { title: "如果 SmartScreen 跳出警告", body: "Harbor 還很新，Windows 可能還不認得它：請選「其他資訊 → 仍要執行」。" },
+    { title: "完成", body: "Dock 會出現，之後也會隨 Windows 自動啟動。" },
   ],
   source: {
-    summary: "Build it from source",
-    note: "Needs Windows 10 (1903+) or 11, Rust (MSVC) and the Visual Studio C++ build tools.",
+    summary: "從原始碼建置",
+    note: "需要 Windows 10（1903 以上）或 11、Rust（MSVC 工具鏈）與 Visual Studio C++ Build Tools。",
     commands: [`git clone ${site.repository}`, "cd Harbor", "cargo run --release -p harbor"],
   },
 } as const;
