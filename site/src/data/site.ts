@@ -13,7 +13,7 @@ export const site = {
   releasesApi: "https://api.github.com/repos/BrianLien09/Harbor/releases",
   download: "https://github.com/BrianLien09/Harbor/releases/latest/download/Harbor-Setup.exe",
   issues: "https://github.com/BrianLien09/Harbor/issues",
-  version: "0.1.20",
+  version: "0.1.21",
   license: "MIT",
 } as const;
 
