@@ -4280,11 +4280,15 @@ impl App {
         let switching = unsafe {
             GetAsyncKeyState(i32::from(VK_MENU.0)) < 0 && GetAsyncKeyState(i32::from(VK_TAB.0)) < 0
         };
+        let mut landed = Vec::new();
         self.flights.retain_mut(|flight| {
             if switching || !flight.is_current(foreground) {
                 return false;
             }
             let going = flight.step(gfx, now);
+            if !going && flight.is_restoring() {
+                landed.push(flight.hwnd);
+            }
             if flight.take_restore(!going) {
                 restore = Some(flight.hwnd);
             }
@@ -4296,6 +4300,10 @@ impl App {
             }
             going
         });
+        // 還原飛行一結束就把視窗從「最小化」名單拿掉：否則到下一次 sync
+        // （約 40 ms 後）前，這扇已經還原的視窗縮圖會以全不透明度閃回 dock。
+        // 若實際沒還原成功，sync 會依真實狀態再加回來。
+        self.minimized.retain(|hwnd| !landed.contains(hwnd));
         if self.flights.len() != flying {
             // Confirm the windows really are minimized, or restored.
             // SAFETY: Timer on our own window.

@@ -82,8 +82,8 @@ use windows::{
         },
         System::{LibraryLoader::GetModuleHandleW, WinRT::Composition::ICompositorDesktopInterop},
         UI::WindowsAndMessaging::{
-            CreateWindowExW, DefWindowProcW, DestroyWindow, HWND_TOPMOST, RegisterClassW,
-            SW_SHOWNOACTIVATE, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_SHOWWINDOW,
+            CreateWindowExW, DefWindowProcW, DestroyWindow, HWND_TOPMOST, IsIconic,
+            RegisterClassW, SW_SHOWNOACTIVATE, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_SHOWWINDOW,
             SetWindowPos, ShowWindow, WNDCLASSW, WS_EX_LAYERED, WS_EX_NOACTIVATE,
             WS_EX_NOREDIRECTIONBITMAP, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_EX_TRANSPARENT,
             WS_POPUP,
@@ -1081,7 +1081,17 @@ impl Flight {
                 };
                 true
             }
-            Phase::Settling { until } => now < *until,
+            Phase::Settling { until } => {
+                // 真正的視窗是非同步還原的（ShowWindowAsync），慢的 app 超過
+                // SETTLE 還沒出現；此時收掉覆蓋層，使用者會先看到空白／舊畫面
+                // 再閃出視窗。所以視窗還在最小化就一直延後，直到它出現後
+                // 再多撐一個 SETTLE 讓它畫好第一幀（上限由 FLIGHT_TIMEOUT 保底）。
+                // SAFETY: Read-only query on a window handle; a dead handle returns false.
+                if unsafe { IsIconic(HWND(self.hwnd as *mut _)) }.as_bool() {
+                    *until = now + SETTLE;
+                }
+                now < *until
+            }
         }
     }
 
