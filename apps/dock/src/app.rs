@@ -104,7 +104,7 @@ use crate::{
     mascot,
     menu::{self, MenuItem},
     menubar::{MenuBar, MenuBarWidgets},
-    multi_window_view::{self, MultiWindowView},
+    multi_window_view::{self, MultiWindowView, Release},
     scene::{Drag, Frame, Scene, SceneInput, SlotContent, Theme},
     shell_work::{self, Action as ShellAction},
     strings::{self, text},
@@ -4191,12 +4191,16 @@ impl App {
     /// Refreshes open windows and recomposes the dock if anything changed.
     fn sync(&mut self) -> Result<()> {
         let attention_changed = self.read_windows();
-        if self
-            .preview
-            .as_ref()
-            .is_some_and(|view| !view.matches(&self.windows_of(&view.app_id)))
-        {
-            self.close_preview();
+        let stale = self.preview.as_ref().and_then(|view| {
+            let current = self.windows_of(&view.app_id);
+            (!view.matches(&current)).then_some(current)
+        });
+        if let Some(current) = stale {
+            match &mut self.preview {
+                // 還剩兩個以上視窗：留著彈窗，就地重排卡片（例如剛用關閉按鈕關掉一個）。
+                Some(view) if current.len() > 1 => view.refresh(&self.gfx, &current)?,
+                _ => self.close_preview(),
+            }
         }
         let windows = &self.windows;
         self.last_rects
@@ -4957,17 +4961,23 @@ pub fn multi_window_view_press() {
 
 pub fn multi_window_view_release() {
     with_app_then("abrir ventana", |app| {
-        let selected = match &mut app.preview {
+        let released = match &mut app.preview {
             Some(view) => view.release()?,
             None => None,
         };
-        if let Some(hwnd) = selected {
-            app.close_preview();
-            // Resolve against the current tracker snapshot: a closed window
-            // must never select a different entry by its former index.
-            if app.windows.iter().any(|window| window.hwnd == hwnd) {
-                return Ok(app.activating(vec![hwnd]));
+        match released {
+            Some(Release::Activate(hwnd)) => {
+                app.close_preview();
+                // Resolve against the current tracker snapshot: a closed window
+                // must never select a different entry by its former index.
+                if app.windows.iter().any(|window| window.hwnd == hwnd) {
+                    return Ok(app.activating(vec![hwnd]));
+                }
             }
+            // 與選單的「關閉」相同：送出 WM_CLOSE 讓程式自己決定要不要詢問存檔。
+            // 彈窗保持開著，視窗真的消失後由 `sync` 就地更新卡片。
+            Some(Release::Close(hwnd)) => launcher::close(&[hwnd]),
+            None => {}
         }
         Ok(None)
     });

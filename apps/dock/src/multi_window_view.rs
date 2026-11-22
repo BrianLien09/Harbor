@@ -43,19 +43,28 @@ const TIMER: usize = 1;
 const PADDING: f32 = 18.0;
 const GAP: f32 = 12.0;
 const CARD_WIDTH: f32 = 216.0;
-const CARD_HEIGHT: f32 = 164.0;
+const CARD_HEIGHT: f32 = 188.0;
 const HEADER: f32 = 24.0;
 const ARC: f32 = 16.0;
 const OPEN_SECONDS: f32 = 0.2;
 /// 指標輪詢（高亮、離開關閉）的間隔。
 const HOVER_POLL_MS: u32 = 60;
 const LEAVE_DELAY: Duration = Duration::from_millis(220);
+/// 卡片上方專門放關閉按鈕的一排；縮圖從這排下面才開始畫。
+/// DWM 縮圖永遠畫在合成內容之上，按鈕若落在縮圖範圍內會被蓋住。
+const TOP_ROW: f32 = 26.0;
+/// 卡片下方的標題列。
+const CAPTION_ROW: f32 = 31.0;
+const CLOSE_SIZE: f32 = 20.0;
+const CLOSE_INSET: f32 = 6.0;
 
 /// Pure layout shared by rendering and hit testing, including negative-origin
 /// monitors. Overflow is paged instead of shrinking previews to unreadable sizes.
 struct MultiWindowLayout {
     bounds: RECT,
     cards: Vec<RECT>,
+    /// 每張卡片右下角的關閉按鈕範圍（與 `cards` 同座標、同順序）。
+    closes: Vec<RECT>,
     per_page: usize,
     /// The screen edge the dock is on: the view opens away from it.
     edge: DockEdge,
@@ -110,6 +119,20 @@ impl MultiWindowLayout {
                     bottom: (y + CARD_HEIGHT * scale).round() as i32,
                 }
             })
+            .collect::<Vec<RECT>>();
+        let closes = cards
+            .iter()
+            .map(|card| {
+                let size = CLOSE_SIZE * scale;
+                let x = card.right as f32 - (CLOSE_INSET * scale + size);
+                let y = card.top as f32 + (TOP_ROW * scale - size) / 2.0;
+                RECT {
+                    left: x.round() as i32,
+                    top: y.round() as i32,
+                    right: (x + size).round() as i32,
+                    bottom: (y + size).round() as i32,
+                }
+            })
             .collect();
         Self {
             bounds: RECT {
@@ -119,6 +142,7 @@ impl MultiWindowLayout {
                 bottom: top + height,
             },
             cards,
+            closes,
             per_page,
             edge,
         }
@@ -126,6 +150,10 @@ impl MultiWindowLayout {
 
     fn hit(&self, point: POINT) -> Option<usize> {
         self.cards.iter().position(|rect| contains(*rect, point))
+    }
+
+    fn hit_close(&self, point: POINT) -> Option<usize> {
+        self.closes.iter().position(|rect| contains(*rect, point))
     }
 
     fn keeps_open(&self, anchor: RECT, point: POINT) -> bool {
@@ -159,6 +187,22 @@ fn contains(rect: RECT, point: POINT) -> bool {
 struct Card {
     root: ContainerVisual,
     highlight: SpriteVisual,
+    /// 指到按鈕本身時蓋上的紅色底與白色 ×。
+    close_hot: ContainerVisual,
+}
+
+/// 按下時指到的目標；放開時仍在同一處才算數，拖離則取消。
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Press {
+    Card(usize),
+    Close(usize),
+}
+
+/// 放開滑鼠後要執行的動作。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Release {
+    Activate(isize),
+    Close(isize),
 }
 
 pub struct MultiWindowView {
@@ -169,6 +213,8 @@ pub struct MultiWindowView {
     windows: Vec<isize>,
     layout: MultiWindowLayout,
     anchor: RECT,
+    /// 圖示所在螢幕；視窗數變動重算版面（`refresh`）時需要。
+    screen: RECT,
     scale: f32,
     theme: Theme,
     page: usize,
@@ -178,7 +224,7 @@ pub struct MultiWindowView {
     /// 展開動畫已畫到最後一格；畫完之前由 dock 主迴圈每幀推進（見 `step`）。
     settled: bool,
     left_at: Option<Instant>,
-    pressed: Option<usize>,
+    pressed: Option<Press>,
     mouse_was_down: bool,
     foreground: isize,
 }
@@ -235,6 +281,7 @@ impl MultiWindowView {
             layout: MultiWindowLayout::new(at.screen, at.icon, at.edge, scale, windows.len()),
             windows,
             anchor: at.icon,
+            screen: at.screen,
             scale,
             theme,
             page: 0,
@@ -388,15 +435,20 @@ impl MultiWindowView {
             highlight.SetOpacity(0.0)?;
             card.Children()?.InsertAtTop(&highlight)?;
             let title = tracker::title(hwnd);
-            let mut title = if title.is_empty() {
+            let title = if title.is_empty() {
                 text().new_window.replace('&', "")
             } else {
                 title
             };
-            if title.chars().count() > 27 {
-                title = title.chars().take(26).chain(['…']).collect();
-            }
-            let label = gfx.text_brush(&title, self.scale, false, ink)?;
+            // 標題要讓出右側關閉按鈕的位置，改用依寬度截斷，不再依字數。
+            let label = gfx.text_brush_fitted(
+                &title,
+                self.scale,
+                13.0,
+                false,
+                ink,
+                size.X - 20.0 * self.scale,
+            )?;
             let caption = c.CreateSpriteVisual()?;
             caption.SetBrush(&label.brush)?;
             caption.SetSize(Vector2 {
@@ -409,10 +461,93 @@ impl MultiWindowView {
                 Z: 0.0,
             })?;
             card.Children()?.InsertAtTop(&caption)?;
+            let button = Vector2 {
+                X: CLOSE_SIZE * self.scale,
+                Y: CLOSE_SIZE * self.scale,
+            };
+            let close = c.CreateContainerVisual()?;
+            close.SetSize(button)?;
+            close.SetOffset(Vector3 {
+                X: size.X - (CLOSE_INSET + CLOSE_SIZE) * self.scale,
+                Y: (TOP_ROW - CLOSE_SIZE) / 2.0 * self.scale,
+                Z: 0.0,
+            })?;
+            // 圓形：用半徑等於邊長一半的圓角矩形裁切。
+            let round = c.CreateRoundedRectangleGeometry()?;
+            round.SetSize(button)?;
+            round.SetCornerRadius(Vector2 {
+                X: button.X / 2.0,
+                Y: button.Y / 2.0,
+            })?;
+            close.SetClip(&c.CreateGeometricClipWithGeometry(&round)?)?;
+            let rest = c.CreateSpriteVisual()?;
+            rest.SetSize(button)?;
+            rest.SetBrush(&c.CreateColorBrushWithColor(if self.theme.light {
+                Color {
+                    A: 40,
+                    R: 0,
+                    G: 0,
+                    B: 0,
+                }
+            } else {
+                Color {
+                    A: 56,
+                    R: 255,
+                    G: 255,
+                    B: 255,
+                }
+            })?)?;
+            close.Children()?.InsertAtTop(&rest)?;
+            let rest_glyph = self.close_glyph(
+                gfx,
+                if self.theme.light {
+                    Color {
+                        A: 220,
+                        R: 30,
+                        G: 30,
+                        B: 36,
+                    }
+                } else {
+                    Color {
+                        A: 235,
+                        R: 255,
+                        G: 255,
+                        B: 255,
+                    }
+                },
+                button,
+            )?;
+            close.Children()?.InsertAtTop(&rest_glyph)?;
+            // 指到按鈕時整層蓋上紅底白 ×，用透明度切換，不重建畫面。
+            let hot = c.CreateContainerVisual()?;
+            hot.SetSize(button)?;
+            hot.SetOpacity(0.0)?;
+            let red = c.CreateSpriteVisual()?;
+            red.SetSize(button)?;
+            red.SetBrush(&c.CreateColorBrushWithColor(Color {
+                A: 235,
+                R: 232,
+                G: 72,
+                B: 62,
+            })?)?;
+            hot.Children()?.InsertAtTop(&red)?;
+            hot.Children()?.InsertAtTop(&self.close_glyph(
+                gfx,
+                Color {
+                    A: 255,
+                    R: 255,
+                    G: 255,
+                    B: 255,
+                },
+                button,
+            )?)?;
+            close.Children()?.InsertAtTop(&hot)?;
+            card.Children()?.InsertAtTop(&close)?;
             layers.InsertAtTop(&card)?;
             self.cards.push(Card {
                 root: card,
                 highlight,
+                close_hot: hot,
             });
         }
         if let Some(target) = &self.target {
@@ -421,6 +556,38 @@ impl MultiWindowView {
         self.opened = Instant::now();
         self.settled = false;
         Ok(())
+    }
+
+    /// 置中於按鈕內的「×」。用兩條旋轉 45 度的細長矩形組成，而不是文字，
+    /// 因為字型的 × 字形上下留白不對稱，無法精確置中。
+    fn close_glyph(&self, gfx: &Gfx, color: Color, button: Vector2) -> Result<ContainerVisual> {
+        let c = &gfx.compositor;
+        let glyph = c.CreateContainerVisual()?;
+        glyph.SetSize(button)?;
+        let brush = c.CreateColorBrushWithColor(color)?;
+        let length = 9.0 * self.scale;
+        let thickness = (1.5 * self.scale).max(1.0);
+        for angle in [45.0, -45.0] {
+            let bar = c.CreateSpriteVisual()?;
+            bar.SetBrush(&brush)?;
+            bar.SetSize(Vector2 {
+                X: length,
+                Y: thickness,
+            })?;
+            bar.SetOffset(Vector3 {
+                X: (button.X - length) / 2.0,
+                Y: (button.Y - thickness) / 2.0,
+                Z: 0.0,
+            })?;
+            bar.SetCenterPoint(Vector3 {
+                X: length / 2.0,
+                Y: thickness / 2.0,
+                Z: 0.0,
+            })?;
+            bar.SetRotationAngleInDegrees(angle)?;
+            glyph.Children()?.InsertAtTop(&bar)?;
+        }
+        Ok(glyph)
     }
 
     /// 展開動畫還沒畫完。DWM 縮圖得由 CPU 逐格移動，不能交給合成器，
@@ -444,7 +611,9 @@ impl MultiWindowView {
             1.0
         };
         let eased = 1.0 - (1.0 - progress).powi(3);
-        let hovered = self.layout.hit(self.local_cursor()?);
+        let cursor = self.local_cursor()?;
+        let hovered = self.layout.hit(cursor);
+        let hovered_close = self.layout.hit_close(cursor);
         let center = (self.anchor.left + (self.anchor.right - self.anchor.left) / 2
             - self.layout.bounds.left) as f32;
         let travel = (1.0 - eased) * 36.0 * self.scale;
@@ -467,14 +636,19 @@ impl MultiWindowView {
             card.root.SetOpacity(eased)?;
             card.highlight
                 .SetOpacity(if hovered == Some(index) { 1.0 } else { 0.0 })?;
+            card.close_hot.SetOpacity(if hovered_close == Some(index) {
+                1.0
+            } else {
+                0.0
+            })?;
             if let Some(&hwnd) = self.windows.get(self.page + index) {
                 self.thumbnails.place_preview(
                     hwnd,
                     RECT {
                         left: (x + 4.0 * self.scale).round() as i32,
-                        top: (y + 4.0 * self.scale).round() as i32,
+                        top: (y + TOP_ROW * self.scale).round() as i32,
                         right: (x + width - 4.0 * self.scale).round() as i32,
-                        bottom: (y + (CARD_HEIGHT - 31.0) * self.scale).round() as i32,
+                        bottom: (y + (CARD_HEIGHT - CAPTION_ROW) * self.scale).round() as i32,
                     },
                     (255.0 * eased) as u8,
                 );
@@ -526,22 +700,87 @@ impl MultiWindowView {
     fn press_at(&mut self, point: POINT) {
         // Do not select a card while it is still moving past another card.
         self.pressed = if !self.animated || self.opened.elapsed().as_secs_f32() >= OPEN_SECONDS {
-            self.layout.hit(point)
+            self.target_at(point)
         } else {
             None
         };
     }
 
-    pub fn release(&mut self) -> Result<Option<isize>> {
+    /// 關閉按鈕疊在卡片上，所以要先判斷按鈕，再判斷整張卡片。
+    fn target_at(&self, point: POINT) -> Option<Press> {
+        self.layout
+            .hit_close(point)
+            .map(Press::Close)
+            .or_else(|| self.layout.hit(point).map(Press::Card))
+    }
+
+    pub fn release(&mut self) -> Result<Option<Release>> {
         Ok(self.release_at(self.local_cursor()?))
     }
 
-    fn release_at(&mut self, point: POINT) -> Option<isize> {
-        let hit = self.layout.hit(point);
-        self.pressed
+    fn release_at(&mut self, point: POINT) -> Option<Release> {
+        let hit = self.target_at(point);
+        let pressed = self
+            .pressed
             .take()
-            .filter(|pressed| Some(*pressed) == hit)
-            .and_then(|index| self.windows.get(self.page + index).copied())
+            .filter(|pressed| Some(*pressed) == hit)?;
+        match pressed {
+            Press::Card(index) => self
+                .windows
+                .get(self.page + index)
+                .map(|&hwnd| Release::Activate(hwnd)),
+            Press::Close(index) => self
+                .windows
+                .get(self.page + index)
+                .map(|&hwnd| Release::Close(hwnd)),
+        }
+    }
+
+    /// 視窗清單變了（例如剛按關閉按鈕、視窗已結束）：就地重排剩下的卡片，
+    /// 不關掉整個彈窗，也不重播展開動畫。
+    pub fn refresh(&mut self, gfx: &Gfx, current: &[isize]) -> Result<()> {
+        let mut windows: Vec<isize> = self
+            .windows
+            .iter()
+            .copied()
+            .filter(|hwnd| current.contains(hwnd))
+            .collect();
+        let added: Vec<isize> = current
+            .iter()
+            .copied()
+            .filter(|hwnd| !windows.contains(hwnd))
+            .collect();
+        windows.extend(added);
+        self.windows = windows;
+        self.layout = MultiWindowLayout::new(
+            self.screen,
+            self.anchor,
+            self.layout.edge,
+            self.scale,
+            self.windows.len(),
+        );
+        let per_page = self.layout.per_page;
+        self.page = self
+            .page
+            .min(self.windows.len().saturating_sub(1) / per_page * per_page);
+        self.pressed = None;
+        self.rebuild(gfx)?;
+        // 動畫只在彈窗剛出現時播；這裡直接畫到最後一格。
+        self.opened = Instant::now() - Duration::from_secs_f32(OPEN_SECONDS);
+        let bounds = self.layout.bounds;
+        // SAFETY: 只調整自己的彈窗位置與大小，不搶焦點。
+        unsafe {
+            SetWindowPos(
+                self.hwnd,
+                Some(HWND_TOPMOST),
+                bounds.left,
+                bounds.top,
+                bounds.right - bounds.left,
+                bounds.bottom - bounds.top,
+                SWP_NOACTIVATE | SWP_SHOWWINDOW,
+            )?;
+        }
+        self.update()
     }
 
     pub fn scroll(&mut self, gfx: &Gfx, previous: bool) -> Result<()> {
@@ -691,7 +930,7 @@ mod tests {
                     .ok_or_else(|| anyhow::anyhow!("DWM did not place the preview"))?;
                 assert_eq!(
                     image.bottom,
-                    (rect.top as f32 + (CARD_HEIGHT - 31.0) * view.scale).round() as i32,
+                    (rect.top as f32 + (CARD_HEIGHT - CAPTION_ROW) * view.scale).round() as i32,
                     "each preview must align with its card's caption baseline"
                 );
             }
@@ -709,7 +948,10 @@ mod tests {
                 y: (rect.top + rect.bottom) / 2,
             };
             view.press_at(point);
-            assert_eq!(view.release_at(point), Some(windows[view.layout.per_page]));
+            assert_eq!(
+                view.release_at(point),
+                Some(Release::Activate(windows[view.layout.per_page]))
+            );
             view.press_at(point);
             assert_eq!(
                 view.release_at(POINT { x: 0, y: 0 }),
@@ -718,7 +960,18 @@ mod tests {
             );
             view.scroll(&gfx, true)?;
             view.press_at(point);
-            assert_eq!(view.release_at(point), Some(windows[0]));
+            assert_eq!(view.release_at(point), Some(Release::Activate(windows[0])));
+            let close = view.layout.closes[0];
+            let button = POINT {
+                x: (close.left + close.right) / 2,
+                y: (close.top + close.bottom) / 2,
+            };
+            view.press_at(button);
+            assert_eq!(
+                view.release_at(button),
+                Some(Release::Close(windows[0])),
+                "the close button must close, not activate"
+            );
             drop(view);
             assert!(
                 !unsafe { IsWindow(Some(hwnd)) }.as_bool(),
@@ -867,5 +1120,45 @@ mod tests {
             );
         }
         assert!(layout.per_page < 20);
+    }
+
+    #[test]
+    fn close_button_should_sit_inside_its_card_below_the_thumbnail() {
+        for scale in [1.0, 1.25, 2.0] {
+            let layout = MultiWindowLayout::new(
+                RECT {
+                    left: 0,
+                    top: 0,
+                    right: 1920,
+                    bottom: 1080,
+                },
+                RECT {
+                    left: 900,
+                    top: 950,
+                    right: 960,
+                    bottom: 1020,
+                },
+                DockEdge::Bottom,
+                scale,
+                3,
+            );
+            for (card, close) in layout.cards.iter().zip(&layout.closes) {
+                assert!(close.left >= card.left && close.right <= card.right);
+                assert!(close.bottom <= card.bottom);
+                let thumbnail_top = card.top as f32 + TOP_ROW * scale;
+                assert!(
+                    close.bottom as f32 <= thumbnail_top + 1.0,
+                    "DWM thumbnails draw on top, so the button must not overlap them"
+                );
+                let centre = POINT {
+                    x: (close.left + close.right) / 2,
+                    y: (close.top + close.bottom) / 2,
+                };
+                assert_eq!(
+                    layout.hit_close(centre),
+                    layout.cards.iter().position(|c| contains(*c, centre))
+                );
+            }
+        }
     }
 }
