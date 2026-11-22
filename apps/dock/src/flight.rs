@@ -53,7 +53,7 @@
 
 use std::{
     sync::{
-        OnceLock,
+        Arc, OnceLock,
         atomic::{AtomicBool, Ordering},
         mpsc::{Receiver, TryRecvError, channel},
     },
@@ -68,10 +68,10 @@ use harbor_core::{
 };
 use harbor_shell::{icons::IconImage, screen, tracker};
 use windows::{
-    Foundation::TimeSpan,
+    Foundation::{TimeSpan, TypedEventHandler},
     UI::Composition::{
-        CompositionPropertySet, CompositionStretch, ContainerVisual, Desktop::DesktopWindowTarget,
-        SpriteVisual,
+        CompositionBatchTypes, CompositionPropertySet, CompositionStretch, ContainerVisual,
+        Desktop::DesktopWindowTarget, SpriteVisual,
     },
     Win32::{
         Foundation::{HWND, LPARAM, LRESULT, RECT, WPARAM},
@@ -117,6 +117,10 @@ const SETTLE: Duration = Duration::from_millis(120);
 /// Abandon a stalled screen copy instead of keeping its overlay and frame loop alive.
 const CAPTURE_TIMEOUT: Duration = Duration::from_millis(750);
 const FLIGHT_TIMEOUT: Duration = Duration::from_secs(2);
+/// 合成器動畫比 UI 時鐘多等的上限。負載高時動畫提交會晚於 UI 開始計時，
+/// 正常情況由 `CompositionScopedBatch` 的完成事件收尾；萬一事件沒來
+/// （裝置遺失等）就靠這個上限放行，不讓覆蓋層卡住。
+const COMPLETION_GRACE: Duration = Duration::from_millis(400);
 static CAPTURE_BUSY: AtomicBool = AtomicBool::new(false);
 
 struct CapturePermit;
@@ -291,6 +295,8 @@ enum Phase {
         start: Instant,
         /// Kept alive: the strips' animations read it.
         _drive: CompositionPropertySet,
+        /// 合成器真的播完 `bend` 與 `shift` 之後才會變成 `true`。
+        done: Arc<AtomicBool>,
         /// The stand-in of a minimize and the frames it has overlapped the
         /// strips, until they are certainly on screen.
         stand_in: Option<(isize, u32)>,
@@ -771,13 +777,17 @@ fn bind(
 
 /// Starts the flight bound by [`bind`]: the compositor animates `bend` and
 /// `shift` for `seconds` at the display's refresh rate.
+///
+/// 回傳的旗標在合成器真的播完時才會變 `true`。UI 執行緒自己的時鐘在負載高時
+/// 會和合成器脫鉤（動畫提交晚於計時起點），只看時鐘收尾，會在條帶還在半空
+/// 時就拆掉覆蓋層、或提早還原真視窗，畫面就「閃一下」。
 fn launch(
     gfx: &Gfx,
     genie: &Genie,
     drive: &CompositionPropertySet,
     reverse: bool,
     seconds: f32,
-) -> Result<()> {
+) -> Result<Arc<AtomicBool>> {
     let compositor = &gfx.compositor;
     let travel = (genie.slot.bottom - genie.window.top).max(0.0);
     let at = |progress: f32| if reverse { 1.0 - progress } else { progress };
@@ -799,9 +809,19 @@ fn launch(
         drive.StartAnimation(name, &animation)?;
         Ok(())
     };
+    // 批次只包住這兩段關鍵影格動畫（條帶上的運算式動畫是在 `bind` 啟動的，
+    // 不會讓批次永遠無法結束）。
+    let done = Arc::new(AtomicBool::new(false));
+    let batch = compositor.CreateScopedBatch(CompositionBatchTypes::Animation)?;
+    let finished = Arc::clone(&done);
+    batch.Completed(&TypedEventHandler::new(move |_, _| {
+        finished.store(true, Ordering::Release);
+        Ok(())
+    }))?;
     animate(h!("bend"), Genie::bend, 1.0)?;
     animate(h!("shift"), Genie::slide, travel)?;
-    Ok(())
+    batch.End()?;
+    Ok(done)
 }
 
 /// Nothing is drawn below the slot: strips vanish as they enter it.
@@ -974,8 +994,10 @@ impl Flight {
             .and_then(|()| clip_at_slot(gfx, &root, &genie, turn))
             .and_then(|()| cut(gfx, &root, image, height))
             .and_then(|pieces| bind(gfx, &genie, &pieces, size, true))
-            .and_then(|drive| launch(gfx, &genie, &drive, true, seconds).map(|()| drive));
-        let Ok(drive) = drive else {
+            .and_then(|drive| {
+                launch(gfx, &genie, &drive, true, seconds).map(|done| (drive, done))
+            });
+        let Ok((drive, done)) = drive else {
             // SAFETY: Our own window, destroyed once.
             unsafe {
                 let _ = DestroyWindow(overlay);
@@ -999,6 +1021,7 @@ impl Flight {
             phase: Phase::Flying {
                 start: Instant::now(),
                 _drive: drive,
+                done,
                 stand_in: None,
             },
             restoring: true,
@@ -1042,7 +1065,7 @@ impl Flight {
                     Ok(None) | Err(TryRecvError::Disconnected) => return false,
                 };
                 let thumbnail = *thumbnail;
-                let Ok(drive) = self.take_off(gfx, image) else {
+                let Ok((drive, done)) = self.take_off(gfx, image) else {
                     return false;
                 };
                 // The clock starts now, so copying the screen does not eat
@@ -1050,13 +1073,17 @@ impl Flight {
                 self.phase = Phase::Flying {
                     start: Instant::now(),
                     _drive: drive,
+                    done,
                     stand_in: Some((thumbnail, 0)),
                 };
                 true
             }
             // The compositor is flying the strips; only the end is ours.
             Phase::Flying {
-                start, stand_in, ..
+                start,
+                stand_in,
+                done,
+                ..
             } => {
                 if let Some((thumbnail, frames)) = stand_in {
                     *frames += 1;
@@ -1069,8 +1096,13 @@ impl Flight {
                         *stand_in = None;
                     }
                 }
-                let t = now.saturating_duration_since(*start).as_secs_f32() / self.seconds;
-                if t < 1.0 {
+                let elapsed = now.saturating_duration_since(*start);
+                let t = elapsed.as_secs_f32() / self.seconds;
+                // 時鐘到了還要等合成器真的播完：否則動畫尾段被提早腰斬，
+                // 還原時真視窗也會在條帶還沒到全尺寸前就冒出來。
+                let finished = done.load(Ordering::Acquire)
+                    || elapsed >= Duration::from_secs_f32(self.seconds) + COMPLETION_GRACE;
+                if t < 1.0 || !finished {
                     return true;
                 }
                 if !self.restoring {
@@ -1181,15 +1213,19 @@ impl Flight {
 
     /// Cuts the copy of the window (`image`) into strips, ties them to the
     /// genie and starts it.
-    fn take_off(&mut self, gfx: &Gfx, captured: Captured) -> Result<CompositionPropertySet> {
+    fn take_off(
+        &mut self,
+        gfx: &Gfx,
+        captured: Captured,
+    ) -> Result<(CompositionPropertySet, Arc<AtomicBool>)> {
         let Captured { image, restore } = captured;
         let window = self.source;
         let pieces = cut(gfx, &self.root, &image, image.height)?;
         let size = (image.width as f32, image.height as f32);
         let drive = bind(gfx, &self.genie, &pieces, size, false)?;
-        launch(gfx, &self.genie, &drive, false, self.seconds)?;
+        let done = launch(gfx, &self.genie, &drive, false, self.seconds)?;
         self.captured = Some((restore, window));
-        Ok(drive)
+        Ok((drive, done))
     }
 }
 

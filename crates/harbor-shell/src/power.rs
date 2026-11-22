@@ -21,9 +21,9 @@ use windows::Win32::System::{
         MEMORY_PRIORITY_LOW, PROCESS_POWER_THROTTLING_CURRENT_VERSION,
         PROCESS_POWER_THROTTLING_EXECUTION_SPEED, PROCESS_POWER_THROTTLING_STATE,
         ProcessMemoryPriority, ProcessPowerThrottling, SetPriorityClass, SetProcessInformation,
-        SetThreadInformation, THREAD_POWER_THROTTLING_CURRENT_VERSION,
+        SetThreadInformation, SetThreadPriority, THREAD_POWER_THROTTLING_CURRENT_VERSION,
         THREAD_POWER_THROTTLING_EXECUTION_SPEED, THREAD_POWER_THROTTLING_STATE,
-        ThreadPowerThrottling,
+        THREAD_PRIORITY_ABOVE_NORMAL, THREAD_PRIORITY_NORMAL, ThreadPowerThrottling,
     },
 };
 use windows::core::GUID;
@@ -125,6 +125,21 @@ pub fn set_thread_efficiency(enabled: bool) {
             (&raw const state).cast::<c_void>(),
             size_of::<THREAD_POWER_THROTTLING_STATE>() as u32,
         );
+    }
+}
+
+/// 動畫期間把 UI 執行緒略微提高優先權。系統負載高時，每幀的 tick
+/// 與 `DwmFlush` 之間要靠它搶到 CPU，否則神燈等動畫的提交會跟著晚幀。
+/// 動畫結束就還原，閒置時仍由 EcoQoS 接手。
+pub fn set_thread_boost(enabled: bool) {
+    let priority = if enabled {
+        THREAD_PRIORITY_ABOVE_NORMAL
+    } else {
+        THREAD_PRIORITY_NORMAL
+    };
+    // SAFETY: Only changes the calling thread's own priority; failure leaves it as is.
+    unsafe {
+        let _ = SetThreadPriority(GetCurrentThread(), priority);
     }
 }
 

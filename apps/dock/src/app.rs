@@ -5572,6 +5572,7 @@ fn message_loop() {
             let animating = is_animating();
             if was_animating != Some(animating) {
                 power::set_thread_efficiency(!animating);
+                power::set_thread_boost(animating);
                 if was_animating == Some(true) {
                     with_app("recorte de memoria", |app| {
                         app.schedule_trim();
